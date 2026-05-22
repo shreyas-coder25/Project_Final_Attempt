@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Send, Sparkles, User, Loader2 } from "lucide-react";
 import { Button } from "./ui/Button";
-import { assistantReply } from "../lib/gemini";
+import { getGeminiClient } from "../lib/gemini";
 
 interface StudentProfile {
   domain?: string;
@@ -58,12 +58,26 @@ export default function AssistantChat({
     setIsLoading(true);
 
     try {
-      const reply = await assistantReply(studentProfile, userMsg);
+      const ai = getGeminiClient();
+      const prompt = `You are a supportive AI learning companion for an engineering student. 
+The student's profile:
+Domain: ${studentProfile?.domain || "Unknown"}
+Goals: ${studentProfile?.goals || "Unknown"}
+Current Skills: ${studentProfile?.skills?.join(", ") || "Unknown"}
+
+Provide helpful, very concise, encouraging responses. Suggest resources if applicable. Remind them to discuss complex architectural decisions with their human mentor. 
+User's query: ${userMsg}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+      });
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: reply,
+          content: response.text || "I'm having trouble responding right now.",
         },
       ]);
     } catch {
@@ -72,7 +86,7 @@ export default function AssistantChat({
         {
           role: "assistant",
           content:
-            "Sorry, I couldn't connect to the AI service. Please check Firebase Functions and the server-side GEMINI_API_KEY, or try again later.",
+            "Sorry, I couldn't connect to the AI service. Please check that VITE_GEMINI_API_KEY is configured in your .env file, or try again later.",
         },
       ]);
     } finally {

@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Send, Phone, Video, MoreVertical } from "lucide-react";
 import { Button } from "./ui/Button";
 import {
+  getChatMessages,
   addChatMessage,
-  subscribeChatMessages,
   type ChatMessage,
 } from "@/src/lib/store";
 
@@ -18,7 +18,6 @@ interface MentorChatProps {
   studentName: string;
   domain: string;
   role: "student" | "mentor";
-  mentorshipId: string;
 }
 
 function formatTime(ts: number): string {
@@ -50,26 +49,22 @@ export default function MentorChat({
   studentName,
   domain,
   role,
-  mentorshipId,
 }: MentorChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const loadMessages = useCallback(() => {
-    return subscribeChatMessages(
-      mentorshipId,
-      setMessages,
-      (err) => setError(err.message),
-    );
-  }, [mentorshipId]);
+    setMessages(getChatMessages(mentorId, studentId));
+  }, [mentorId, studentId]);
 
-  // Load messages when opened, then keep them synced from Firestore
+  // Load messages when opened, and poll for new messages every 2s while open
   useEffect(() => {
     if (!isOpen) return;
-    return loadMessages();
+    loadMessages();
+    const interval = setInterval(loadMessages, 2000);
+    return () => clearInterval(interval);
   }, [isOpen, loadMessages]);
 
   // Auto-scroll to bottom on new messages
@@ -84,15 +79,11 @@ export default function MentorChat({
 
   if (!isOpen) return null;
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!input.trim()) return;
-    const message = input.trim();
+    addChatMessage(mentorId, studentId, role, input.trim());
     setInput("");
-    try {
-      await addChatMessage(mentorshipId, role, message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send message.");
-    }
+    loadMessages();
   };
 
   const otherName = role === "student" ? mentorName : studentName;
@@ -151,12 +142,7 @@ export default function MentorChat({
         </div>
 
         {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 bg-[#f8f9fa]">
-          {error && (
-            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              {error}
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto p-4 bg-[#f8f9fa]">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center px-6">
               <div className="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-4">

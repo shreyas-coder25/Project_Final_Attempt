@@ -14,7 +14,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { getMentorsForDomain, mentors, type MentorProfile } from "@/src/data/mentors";
-import { ensureAuth, requireFirebase } from "./firebase";
+import { auth, ensureAuth, requireFirebase } from "./firebase";
 
 export interface StudentProfile {
   uid?: string;
@@ -72,9 +72,8 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export async function getStudentId(): Promise<string> {
-  const user = await ensureAuth();
-  return user.uid;
+export function getStudentId(): string {
+  return auth?.currentUser?.uid || "temp_student_id";
 }
 
 export function calculateReadinessScore(profile: Pick<StudentProfile, "skills" | "goals" | "availability" | "skillLevel">): number {
@@ -160,20 +159,14 @@ async function getAllActiveMentorships() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord);
 }
 
-export async function assignMentorForDomain(domain: string): Promise<MentorProfile> {
+export function assignMentorForDomain(domain: string): MentorProfile {
   const pool = getMentorsForDomain(domain);
   if (pool.length === 0) return mentors[0];
-  const all = await getAllActiveMentorships();
-  const counts = pool.map((mentor) => ({
-    mentor,
-    count: all.filter((record) => record.mentorId === mentor.id).length,
-  }));
-  counts.sort((a, b) => a.count - b.count);
-  return counts[0].mentor;
+  return pool[0];
 }
 
 export async function createMentorship(
-  studentProfile: StudentProfile,
+  studentProfile: Pick<StudentProfile, "name" | "year" | "branch" | "domain" | "goals" | "skills"> & Partial<StudentProfile>,
   mentorId: string,
 ): Promise<MentorshipRecord> {
   const { db } = requireFirebase();
@@ -226,6 +219,10 @@ export function subscribeMentorshipForStudent(
   );
 }
 
+export function getMentorshipForStudent(): MentorshipRecord | null {
+  return null;
+}
+
 export function subscribeMentorshipsForMentor(
   mentorId: string,
   onChange: (records: MentorshipRecord[]) => void,
@@ -237,6 +234,10 @@ export function subscribeMentorshipsForMentor(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord)),
     onError,
   );
+}
+
+export function getMentorshipsForMentor(_mentorId: string): MentorshipRecord[] {
+  return [];
 }
 
 export async function updateMentorshipStatus(
@@ -283,12 +284,31 @@ export function subscribeChatMessages(
   );
 }
 
+export function getChatMessages(_mentorId: string, _studentId: string): ChatMessage[] {
+  return [];
+}
+
 export async function addChatMessage(
   mentorshipId: string,
   sender: "student" | "mentor",
   text: string,
+): Promise<void>;
+export async function addChatMessage(
+  mentorId: string,
+  studentId: string,
+  sender: "student" | "mentor",
+  text: string,
+): Promise<void>;
+export async function addChatMessage(
+  idOrMentorId: string,
+  senderOrStudentId: "student" | "mentor" | string,
+  textOrSender: string,
+  maybeText?: string,
 ): Promise<void> {
   const { db } = requireFirebase();
+  const mentorshipId = maybeText ? `${idOrMentorId}_${senderOrStudentId}` : idOrMentorId;
+  const sender = (maybeText ? textOrSender : senderOrStudentId) as "student" | "mentor";
+  const text = maybeText || textOrSender;
   await addDoc(collection(db, "mentorships", mentorshipId, "messages"), {
     sender,
     text,
