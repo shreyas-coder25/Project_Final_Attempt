@@ -21,12 +21,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/Ca
 import AssistantChat from "@/src/components/AssistantChat";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
-import { getMentorshipForStudent, getStudentId } from "@/src/lib/store";
+import { subscribeStudentProfile, subscribeMentorshipForStudent, getStudentId, type MentorshipRecord } from "@/src/lib/store";
+import { ensureAuth } from "@/src/lib/firebase";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
+  const [mentorship, setMentorship] = useState<MentorshipRecord | null>(null);
   const [toast, setToast] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -34,32 +36,48 @@ export default function StudentDashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem("studentProfile");
-    if (!raw) {
-      navigate("/onboarding");
-      return;
-    }
-    try {
-      setProfile(JSON.parse(raw));
-    } catch {
-      navigate("/onboarding");
-    }
+    let unsubProfile: (() => void) | undefined;
+    let unsubMentorship: (() => void) | undefined;
+
+    ensureAuth().then((user) => {
+      unsubProfile = subscribeStudentProfile(
+        user.uid,
+        (data) => {
+          if (data) {
+            setProfile(data);
+            localStorage.setItem("studentProfile", JSON.stringify(data));
+          } else {
+            const raw = localStorage.getItem("studentProfile");
+            if (raw) setProfile(JSON.parse(raw));
+            else navigate("/onboarding");
+          }
+        },
+        (err) => console.error("Profile sync error", err)
+      );
+
+      unsubMentorship = subscribeMentorshipForStudent(
+        user.uid,
+        (data) => setMentorship(data),
+        (err) => console.error("Mentorship sync error", err)
+      );
+    }).catch(() => {
+      const raw = localStorage.getItem("studentProfile");
+      if (raw) setProfile(JSON.parse(raw));
+      else navigate("/onboarding");
+    });
+
     if (searchParams.get("matched") === "true") {
       setShowWelcome(true);
       setTimeout(() => setShowWelcome(false), 4000);
     }
+
+    return () => {
+      if (unsubProfile) unsubProfile();
+      if (unsubMentorship) unsubMentorship();
+    };
   }, [navigate, searchParams]);
 
-  // Poll for mentorship updates (mentor accepting the request)
-  const [, forceUpdate] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => forceUpdate((n) => n + 1), 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   if (!profile) return null;
-
-  const mentorship = getMentorshipForStudent();
   const mentor = mentorship ? getMentorById(mentorship.mentorId) : null;
   const studentId = getStudentId();
   const isPending = mentorship?.status === "pending";

@@ -53,8 +53,18 @@ export async function signInWithGoogle(): Promise<User> {
 export async function ensureAuth(): Promise<User> {
   const { auth } = requireFirebase();
   if (auth.currentUser) return auth.currentUser;
-  const result = await signInAnonymously(auth);
-  return result.user;
+  
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error: any) {
+    if (error?.code === "auth/admin-restricted-operation" || error?.message?.includes("admin-restricted-operation")) {
+      throw new Error(
+        "Anonymous Sign-In is disabled. Please go to Firebase Console > Authentication > Sign-in method, and enable 'Anonymous'."
+      );
+    }
+    throw error;
+  }
 }
 
 export function getCallable<TRequest, TResponse>(name: string) {

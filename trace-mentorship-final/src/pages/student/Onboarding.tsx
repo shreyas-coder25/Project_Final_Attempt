@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
-import { assignMentorForDomain, createMentorship } from "@/src/lib/store";
+import { assignMentorForDomain, createMentorship, saveStudentProfile } from "@/src/lib/store";
 
 const domains = [
   "Web Development",
@@ -142,20 +142,28 @@ export default function StudentOnboarding() {
   const handleNext = () => setStep((s) => s + 1);
   const handleBack = () => setStep((s) => s - 1);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
-    localStorage.setItem("studentProfile", JSON.stringify(data));
+    
+    try {
+      localStorage.setItem("studentProfile", JSON.stringify(data));
+      
+      await saveStudentProfile(data);
+      
+      const mentor = assignMentorForDomain(data.domain);
+      await createMentorship(
+        { name: data.name, year: data.year, branch: data.branch, domain: data.domain, goals: data.goals || data.primaryGoal || "", skills: data.skills },
+        mentor.id,
+      );
 
-    // Create mentorship record — starts as 'pending' until mentor accepts
-    const mentor = assignMentorForDomain(data.domain);
-    createMentorship(
-      { name: data.name, year: data.year, branch: data.branch, domain: data.domain, goals: data.goals || data.primaryGoal || "", skills: data.skills },
-      mentor.id,
-    );
-
-    setTimeout(() => {
-      navigate("/student?matched=true");
-    }, 2500);
+      setTimeout(() => {
+        navigate("/student?matched=true");
+      }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to save to Firebase. Check console for details.");
+      setIsSubmitting(false);
+    }
   };
 
   const currentSkillsList =

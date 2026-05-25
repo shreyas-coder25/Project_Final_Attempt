@@ -172,14 +172,10 @@ export async function createMentorship(
   const { db } = requireFirebase();
   const user = await ensureAuth();
   const existing = await getDocs(
-    query(
-      collection(db, "mentorships"),
-      where("studentId", "==", user.uid),
-      where("status", "!=", "archived"),
-      limit(5),
-    ),
+    query(collection(db, "mentorships"), where("studentId", "==", user.uid))
   );
-  await Promise.all(existing.docs.map((snap) => updateDoc(snap.ref, { status: "archived" })));
+  const activeDocs = existing.docs.filter((doc) => doc.data().status !== "archived");
+  await Promise.all(activeDocs.map((snap) => updateDoc(snap.ref, { status: "archived" })));
 
   const record = {
     studentId: user.uid,
@@ -208,13 +204,15 @@ export function subscribeMentorshipForStudent(
 ): Unsubscribe {
   const { db } = requireFirebase();
   return onSnapshot(
-    query(
-      collection(db, "mentorships"),
-      where("studentId", "==", studentId),
-      where("status", "!=", "archived"),
-      limit(1),
-    ),
-    (snap) => onChange(snap.empty ? null : ({ id: snap.docs[0].id, ...snap.docs[0].data() } as MentorshipRecord)),
+    query(collection(db, "mentorships"), where("studentId", "==", studentId)),
+    (snap) => {
+      const active = snap.docs.filter((d) => d.data().status !== "archived");
+      if (active.length === 0) {
+        onChange(null);
+      } else {
+        onChange({ id: active[0].id, ...active[0].data() } as MentorshipRecord);
+      }
+    },
     onError,
   );
 }
@@ -233,8 +231,11 @@ export function subscribeMentorshipsForMentor(
 ): Unsubscribe {
   const { db } = requireFirebase();
   return onSnapshot(
-    query(collection(db, "mentorships"), where("mentorId", "==", mentorId), where("status", "!=", "archived")),
-    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord)),
+    query(collection(db, "mentorships"), where("mentorId", "==", mentorId)),
+    (snap) => {
+      const active = snap.docs.filter((d) => d.data().status !== "archived");
+      onChange(active.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord));
+    },
     onError,
   );
 }
