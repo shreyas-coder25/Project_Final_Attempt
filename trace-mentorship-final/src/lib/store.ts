@@ -219,6 +219,9 @@ export function subscribeMentorshipForStudent(
   );
 }
 
+/**
+ * @deprecated This is a mock stub. Use subscribeMentorshipForStudent() instead for real-time Firestore integration.
+ */
 export function getMentorshipForStudent(): MentorshipRecord | null {
   return null;
 }
@@ -236,6 +239,9 @@ export function subscribeMentorshipsForMentor(
   );
 }
 
+/**
+ * @deprecated This is a mock stub. Use subscribeMentorshipsForMentor() instead for real-time Firestore integration.
+ */
 export function getMentorshipsForMentor(_mentorId: string): MentorshipRecord[] {
   return [];
 }
@@ -284,6 +290,9 @@ export function subscribeChatMessages(
   );
 }
 
+/**
+ * @deprecated This is a mock stub. Use subscribeChatMessages() instead for real-time Firestore integration.
+ */
 export function getChatMessages(_mentorId: string, _studentId: string): ChatMessage[] {
   return [];
 }
