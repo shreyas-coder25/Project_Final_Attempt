@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Send, Phone, Video, MoreVertical } from "lucide-react";
 import { Button } from "./ui/Button";
 import {
-  getChatMessages,
+  subscribeChatMessages,
   addChatMessage,
   type ChatMessage,
 } from "@/src/lib/store";
@@ -55,17 +55,24 @@ export default function MentorChat({
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const loadMessages = useCallback(() => {
-    setMessages(getChatMessages(mentorId, studentId));
-  }, [mentorId, studentId]);
-
-  // Load messages when opened, and poll for new messages every 2s while open
+  // Load messages when opened, and subscribe to real-time chat updates in Firestore
   useEffect(() => {
     if (!isOpen) return;
-    loadMessages();
-    const interval = setInterval(loadMessages, 2000);
-    return () => clearInterval(interval);
-  }, [isOpen, loadMessages]);
+    try {
+      const unsub = subscribeChatMessages(
+        `${mentorId}_${studentId}`,
+        (msgs) => {
+          setMessages(msgs);
+        },
+        (err) => {
+          console.error("Chat message subscription error:", err);
+        }
+      );
+      return () => unsub();
+    } catch (err) {
+      console.error("Firebase not initialized. Chat will rely on mock states:", err);
+    }
+  }, [isOpen, mentorId, studentId]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -79,11 +86,15 @@ export default function MentorChat({
 
   if (!isOpen) return null;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
-    addChatMessage(mentorId, studentId, role, input.trim());
+    const msgText = input.trim();
     setInput("");
-    loadMessages();
+    try {
+      await addChatMessage(mentorId, studentId, role, msgText);
+    } catch (err) {
+      console.error("Failed to send chat message:", err);
+    }
   };
 
   const otherName = role === "student" ? mentorName : studentName;

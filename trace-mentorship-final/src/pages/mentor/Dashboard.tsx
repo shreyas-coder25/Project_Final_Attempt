@@ -17,16 +17,19 @@ import {
   BookOpen,
   Inbox,
   Send,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, type MentorProfile } from "@/src/data/mentors";
 import {
-  getMentorshipsForMentor,
+  subscribeMentorshipsForMentor,
+  addMentorTask,
   updateMentorshipStatus,
   deleteMentorship,
   type MentorshipRecord,
 } from "@/src/lib/store";
+
 
 export default function MentorDashboard() {
   const navigate = useNavigate();
@@ -39,6 +42,8 @@ export default function MentorDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [mentorships, setMentorships] = useState<MentorshipRecord[]>([]);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const auth = sessionStorage.getItem("mentorAuth");
@@ -53,21 +58,39 @@ export default function MentorDashboard() {
       return;
     }
     setMentor(m);
-    setMentorships(getMentorshipsForMentor(mentorId));
+
+    // Subscribe to mentorship records in Firestore in real time
+    const unsub = subscribeMentorshipsForMentor(
+      mentorId,
+      (records) => {
+        setMentorships(records);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Mentor mentorships subscription error:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      unsub();
+    };
   }, [navigate]);
 
-  // Poll for new requests every 3s (so mentor sees student requests live)
-  useEffect(() => {
-    if (!mentor) return;
-    const interval = setInterval(() => {
-      setMentorships(getMentorshipsForMentor(mentor.id));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [mentor]);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0b]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-neutral-400 mx-auto" />
+          <p className="text-sm text-neutral-400">Loading mentor dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!mentor) return null;
 
-  const refreshData = () => setMentorships(getMentorshipsForMentor(mentor.id));
+  const refreshData = () => {}; // No-op since we use real-time listeners!
   const active = mentorships.filter((r) => r.status === "active");
   const pending = mentorships.filter((r) => r.status === "pending");
   const showToast = (msg: string) => {
@@ -84,24 +107,36 @@ export default function MentorDashboard() {
     setChatStudent(record);
     setChatOpen(true);
   };
-  const acceptRequest = (record: MentorshipRecord) => {
-    updateMentorshipStatus(record.id, "active");
-    refreshData();
-    setSelected(null);
-    showToast(`Accepted! ${record.studentName} is now your mentee.`);
-    setTab("mentees");
+  const acceptRequest = async (record: MentorshipRecord) => {
+    try {
+      await updateMentorshipStatus(record.id, "active");
+      setSelected(null);
+      showToast(`Accepted! ${record.studentName} is now your mentee.`);
+      setTab("mentees");
+    } catch (err) {
+      console.error("Error accepting request:", err);
+      showToast("Failed to accept request.");
+    }
   };
-  const declineRequest = (record: MentorshipRecord) => {
-    deleteMentorship(record.id);
-    refreshData();
-    setSelected(null);
-    showToast("Request declined.");
+  const declineRequest = async (record: MentorshipRecord) => {
+    try {
+      await deleteMentorship(record.id);
+      setSelected(null);
+      showToast("Request declined.");
+    } catch (err) {
+      console.error("Error declining request:", err);
+      showToast("Failed to decline request.");
+    }
   };
-  const archiveMentee = (record: MentorshipRecord) => {
-    updateMentorshipStatus(record.id, "archived");
-    refreshData();
-    setSelected(null);
-    showToast("Mentorship archived.");
+  const archiveMentee = async (record: MentorshipRecord) => {
+    try {
+      await updateMentorshipStatus(record.id, "archived");
+      setSelected(null);
+      showToast("Mentorship archived.");
+    } catch (err) {
+      console.error("Error archiving mentorship:", err);
+      showToast("Failed to archive mentorship.");
+    }
   };
 
   return (
@@ -448,7 +483,17 @@ export default function MentorDashboard() {
                     <Button
                       variant="outline"
                       className="w-full gap-2"
-                      onClick={() => showToast("Roadmap task assigned!")}
+                      onClick={async () => {
+                        const taskText = prompt("Enter the task you want to assign to this student:");
+                        if (!taskText || !taskText.trim()) return;
+                        try {
+                          await addMentorTask(selected.id, taskText.trim(), selected.tasks || []);
+                          showToast("Roadmap task assigned!");
+                        } catch (err) {
+                          console.error("Failed to assign task:", err);
+                          showToast("Error assigning task.");
+                        }
+                      }}
                     >
                       <Star className="w-4 h-4" /> Assign Roadmap Task
                     </Button>

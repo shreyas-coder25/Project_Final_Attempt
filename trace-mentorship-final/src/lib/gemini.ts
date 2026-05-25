@@ -51,20 +51,27 @@ Return a JSON array of up to 6 roadmap milestones. For each, provide a title and
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                status: { type: Type.STRING },
+            type: Type.OBJECT,
+            properties: {
+              roadmap: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    status: { type: Type.STRING },
+                  },
+                  required: ["title", "status"],
+                },
               },
-              required: ["title", "status"],
             },
+            required: ["roadmap"],
           },
         },
       });
 
-      return normalizeRoadmap(JSON.parse(response.text || "[]"));
+      const parsed = JSON.parse(response.text || "{}");
+      return normalizeRoadmap(parsed.roadmap || []);
     } catch {
       return [];
     }
@@ -94,13 +101,20 @@ Focus on what to learn next, productivity, or placement readiness. Provide pract
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
+            type: Type.OBJECT,
+            properties: {
+              insights: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+            },
+            required: ["insights"],
           },
         },
       });
 
-      return JSON.parse(response.text || "[]");
+      const parsed = JSON.parse(response.text || "{}");
+      return parsed.insights || [];
     } catch {
       return [];
     }
