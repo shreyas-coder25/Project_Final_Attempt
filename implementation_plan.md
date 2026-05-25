@@ -1,92 +1,55 @@
-# Trace Mentorship - Production-Ready Firebase Integration Plan
+# Trace Mentorship - Firebase Implementation Plan
 
-This plan documents the completed integration of a fully real-time backend powered by **Firebase Auth** and **Firestore snapshot listeners**, replacing all browser `localStorage` mock stores. It also highlights the final operational steps required to prepare the platform for the hackathon demo.
+This updated plan details the shift to a serverless architecture using Firebase, as requested to save time and streamline development. We will use Firebase for Authentication and Database (Firestore), eliminating the need for a separate Node.js/Express backend.
 
----
+## User Review Required
 
-## 🚀 Completed Integration & Architecture
+> [!IMPORTANT]  
+> **Firebase Configuration**: You will need to create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/), enable Authentication (Google Provider), and initialize a Firestore Database. You will then need to provide the Firebase configuration keys to put in the `.env` file.
+> 
+> **Gemini AI Integration**: Since we are dropping the custom backend, we will keep the Gemini API calls on the frontend for the hackathon demo, or use Firebase Cloud Functions if you prefer to hide the API key. For maximum speed, keeping it on the frontend (as it currently is) is the fastest approach.
 
-Every phase of the real-time Firebase migration has been meticulously implemented, type-checked, and validated.
+## Open Questions
 
-### 1. Unified Firebase & Firestore Data Layer (`src/lib/firebase.ts` & `src/lib/store.ts`)
-* **Initialization**: Safe, fallback-friendly Firebase initialization loading configurations dynamically from `.env`.
-* **Zero Polling Real-Time Subscriptions**:
-  * `subscribeStudentProfile`: Employs `onSnapshot` to automatically refresh student details in real time.
-  * `subscribeMentorshipForStudent` & `subscribeMentorshipsForMentor`: Real-time listeners hook directly into the `/mentorships` collection.
-  * `subscribeChatMessages`: Captures new messages inside the subcollection (`/mentorships/{mentorshipId}/messages`) sorted chronologically.
-* **Authentication**: Seamless anonymous signups for students (`ensureAuth`) and profile bindings for mentors.
-
-### 2. Fully Synchronized Student Workflow (`src/pages/student/`)
-* **Onboarding**: On submission, anonymous Auth registers a Firebase user, runs a Gemini-Flash roadmap generation model locally (falling back dynamically if Cloud Functions are offline), and uploads the entire profile to Firestore.
-* **Dashboard**: Subscribes to profile and active mentorships. Renders the interactive **AI Roadmap Stepper** and **Assigned Tasks Checklist** with direct, reactive writebacks to Firestore.
-
-### 3. Reactive Mentor Dashboard (`src/pages/mentor/`)
-* **Auth Bridging**: Mentor logins map directly to predefined profiles and persist registered identities in Firestore.
-* **Inbox**: Listens to requests in real time. Mentors can **Accept** requests (updates status to `"active"`), **Decline** (deletes mentorship document), or **Assign Tasks** (updates tasks checklist inside Firestore).
-
-### 4. Direct Bidirectional Chat (`src/components/MentorChat.tsx`)
-* Instantly propagates messages from both endpoints using a unique combined ID (`{mentorId}_{studentId}`) and active snapshot listeners, providing zero-latency sub-second sync across screens.
+1. Are you okay with keeping the Gemini API call on the frontend for the sake of the hackathon demo speed, or do you want to set up Firebase Cloud Functions to secure the Gemini API key?
+2. Do you want me to execute the Firebase setup and write the code directly into your files, or would you prefer I just provide the code snippets for you to copy/paste?
 
 ---
 
-## 🛠️ Diagnostics & Code Quality Status
+## Proposed Changes
 
-We ran strict compilation and production packaging validation checks:
-* **TypeScript Compilation (`npm run lint` / `tsc --noEmit`)**: 
-  > [!NOTE]  
-  > **Exit Code: 0 (Success)**. The codebase compiles with zero TypeScript errors or warnings.
-* **Production Build (`npm run build` / `vite build`)**: 
-  > [!NOTE]  
-  > **Exit Code: 0 (Success)**. Successfully compiled, optimized, and minified all pages into a premium client bundle under `dist/` in **48 seconds**.
+### Phase 1: Firebase Authentication & Setup (Current Focus)
+* **Setup**: Install the `firebase` npm package.
+* **Config**: Create `src/lib/firebase.ts` to initialize the Firebase App, Auth, and Firestore instances using environment variables.
+* **Authentication**: 
+  * Implement Google Sign-In using `signInWithPopup(auth, googleProvider)`.
+  * Update `MentorLogin.tsx` and the `App.tsx` navigation to reflect real authentication states via `onAuthStateChanged`.
+  * Save the newly authenticated user's profile to Firestore.
+
+### Phase 2: Firestore Database Migration
+We will replace the `localStorage` mock store (`src/lib/store.ts`) with Firestore.
+
+* **Collections**:
+  * `users` (Stores student and mentor profiles)
+  * `mentorships` (Stores requests and active mentorship links)
+  * `messages` (Stores chat history)
+* **Real-time Chat**: 
+  * Implement `onSnapshot` for real-time chat functionality between Mentor and Student in `MentorChat.tsx`.
+* **Data Fetching**:
+  * Update logic to fetch available mentors, submit onboarding data, and accept/decline mentorships via Firestore queries.
+
+### Phase 3: AI Roadmap & Branch Expansion
+* **AI Roadmap Generator**: Integrate the Gemini prompt into the onboarding flow to generate a personalized roadmap based on the user's selected domain and skills. Save this generated roadmap to the user's Firestore document.
+* **Branch Expansion**: Update `domains` and `domainSkills` in `Onboarding.tsx` to include non-tech branches like Civil, Mechanical, and Electrical.
 
 ---
 
-## 📋 What is Remaining For You To Do
+## Verification Plan
 
-Since the code is completely written, fully integrated, and compiling successfully, your next steps are purely operational and demo-oriented:
+### Automated Tests
+* N/A for this rapid hackathon phase.
 
-### 1. Spin up the Local Development Server
-Execute this in your terminal to start the server:
-```bash
-cd trace-mentorship-final
-npm run dev
-```
-The application will boot up at `http://localhost:3000` (or `http://localhost:5173`).
-
-### 2. Run the Side-by-Side End-to-End Walkthrough
-Showcase the power of Firestore's real-time snapshot sync to your hackathon evaluators by opening two browser windows:
-1. **Window A (Student)**: Go to `http://localhost:3000`. Click **Find My Mentor**, fill out the onboarding form under "AI / ML" or "Web Development". Note the load-balanced mentor assigned to you (e.g., *Arjun Mehta*).
-2. **Window B (Mentor)**: Open an incognito tab and navigate to `http://localhost:3000/mentor/login`.
-3. **Login as Mentor**: Click the demo card corresponding to your student's mentor or type their username (e.g., `arjun.ai`) with password `admin123`.
-4. **Accept & Chat**: Click **Accept** on the pending request in Window B. Notice how Window A **instantly updates** to the active state within a split second! Open the chat, send messages, and assign tasks to demonstrate live bidirectional sync.
-
-### 3. Deploy to Production (Optional)
-If you wish to host the website live on the web for judges:
-* **Firebase Hosting**:
-  ```bash
-  npm install -g firebase-tools
-  firebase login
-  firebase init hosting
-  # Set directory to "dist" and rewrite all URLs to /index.html
-  npm run build
-  firebase deploy --only hosting
-  ```
-
-### 4. Firestore Security Rules
-Ensure your Firestore collection stays secure when publishing. Add these rules to your Firebase console under **Firestore -> Rules**:
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if true; // Restrict as needed for production auth
-    }
-    match /mentorships/{mentorshipId} {
-      allow read, write: if true;
-      match /messages/{messageId} {
-        allow read, write: if true;
-      }
-    }
-  }
-}
-```
+### Manual Verification
+1. **Google Auth**: Click "Mentor Login" or "Find My Mentor" and successfully authenticate via a Google popup.
+2. **Firestore Sync**: Verify that upon completing onboarding, a document is created in the `users` and `mentorships` collections in the Firebase Console.
+3. **Real-time Chat**: Have a student and mentor open the chat side-by-side; verify that messages appear instantly using `onSnapshot`.

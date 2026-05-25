@@ -155,10 +155,8 @@ export function subscribeStudentProfile(
 
 async function getAllActiveMentorships() {
   const { db } = requireFirebase();
-  const snap = await getDocs(query(collection(db, "mentorships")));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord)
-    .filter((m) => m.status !== "archived");
+  const snap = await getDocs(query(collection(db, "mentorships"), where("status", "!=", "archived")));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord);
 }
 
 export function assignMentorForDomain(domain: string): MentorProfile {
@@ -177,14 +175,11 @@ export async function createMentorship(
     query(
       collection(db, "mentorships"),
       where("studentId", "==", user.uid),
-      limit(20),
+      where("status", "!=", "archived"),
+      limit(5),
     ),
   );
-  await Promise.all(
-    existing.docs
-      .filter((snap) => snap.data().status !== "archived")
-      .map((snap) => updateDoc(snap.ref, { status: "archived" }))
-  );
+  await Promise.all(existing.docs.map((snap) => updateDoc(snap.ref, { status: "archived" })));
 
   const record = {
     studentId: user.uid,
@@ -216,12 +211,10 @@ export function subscribeMentorshipForStudent(
     query(
       collection(db, "mentorships"),
       where("studentId", "==", studentId),
-      limit(10),
+      where("status", "!=", "archived"),
+      limit(1),
     ),
-    (snap) => {
-      const activeDocs = snap.docs.filter((d) => d.data().status !== "archived");
-      onChange(activeDocs.length === 0 ? null : ({ id: activeDocs[0].id, ...activeDocs[0].data() } as MentorshipRecord));
-    },
+    (snap) => onChange(snap.empty ? null : ({ id: snap.docs[0].id, ...snap.docs[0].data() } as MentorshipRecord)),
     onError,
   );
 }
@@ -237,13 +230,8 @@ export function subscribeMentorshipsForMentor(
 ): Unsubscribe {
   const { db } = requireFirebase();
   return onSnapshot(
-    query(collection(db, "mentorships"), where("mentorId", "==", mentorId)),
-    (snap) => {
-      const records = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord)
-        .filter((r) => r.status !== "archived");
-      onChange(records);
-    },
+    query(collection(db, "mentorships"), where("mentorId", "==", mentorId), where("status", "!=", "archived")),
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord)),
     onError,
   );
 }
@@ -327,9 +315,3 @@ export async function addChatMessage(
     timestamp: Date.now(),
   });
 }
-
-export async function updateMentorTasks(recordId: string, tasks: MentorTask[]): Promise<void> {
-  const { db } = requireFirebase();
-  await updateDoc(doc(db, "mentorships", recordId), { tasks });
-}
-

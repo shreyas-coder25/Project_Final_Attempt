@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
-import { assignMentorForDomain, createMentorship, saveStudentProfile } from "@/src/lib/store";
-import { generateRoadmap } from "@/src/lib/gemini";
-
+import { assignMentorForDomain, createMentorship } from "@/src/lib/store";
 
 const domains = [
   "Web Development",
@@ -144,42 +142,20 @@ export default function StudentOnboarding() {
   const handleNext = () => setStep((s) => s + 1);
   const handleBack = () => setStep((s) => s - 1);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     setIsSubmitting(true);
-    try {
-      // 1. Generate roadmap milestones through AI proxy
-      let roadmap: any[] = [];
-      try {
-        roadmap = await generateRoadmap(
-          data.domain,
-          data.skills,
-          data.goals,
-          data.availability
-        );
-      } catch (err) {
-        console.error("Failed to generate AI roadmap, using empty fallback:", err);
-      }
+    localStorage.setItem("studentProfile", JSON.stringify(data));
 
-      // 2. Save student profile to Firestore (handles Auth internally)
-      const profileToSave = {
-        ...data,
-        roadmap,
-      };
-      const savedProfile = await saveStudentProfile(profileToSave);
-      
-      // Keep localStorage as a synchronous local state cache
-      localStorage.setItem("studentProfile", JSON.stringify(savedProfile));
+    // Create mentorship record — starts as 'pending' until mentor accepts
+    const mentor = assignMentorForDomain(data.domain);
+    createMentorship(
+      { name: data.name, year: data.year, branch: data.branch, domain: data.domain, goals: data.goals || data.primaryGoal || "", skills: data.skills },
+      mentor.id,
+    );
 
-      // 3. Assign load-balanced mentor and create pending mentorship
-      const mentor = assignMentorForDomain(data.domain);
-      await createMentorship(savedProfile, mentor.id);
-
+    setTimeout(() => {
       navigate("/student?matched=true");
-    } catch (err) {
-      console.error("Error during onboarding:", err);
-      setIsSubmitting(false);
-      alert(err instanceof Error ? err.message : "An unexpected error occurred during matching. Please try again.");
-    }
+    }, 2500);
   };
 
   const currentSkillsList =

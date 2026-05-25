@@ -15,28 +15,18 @@ import {
   CheckCircle2,
   Hourglass,
   Send,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/Card";
 import AssistantChat from "@/src/components/AssistantChat";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
-import {
-  subscribeStudentProfile,
-  subscribeMentorshipForStudent,
-  getStudentId,
-  updateRoadmapProgress,
-  updateMentorTasks,
-} from "@/src/lib/store";
-
+import { getMentorshipForStudent, getStudentId } from "@/src/lib/store";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
-  const [mentorship, setMentorship] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -44,85 +34,32 @@ export default function StudentDashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    let unsubProfile: (() => void) | null = null;
-    let unsubMentorship: (() => void) | null = null;
-
-    const setupSubscriptions = () => {
-      const studentId = getStudentId();
-      if (studentId === "temp_student_id") {
-        // Fallback to local profile parsing first
-        const raw = localStorage.getItem("studentProfile");
-        if (!raw) {
-          navigate("/onboarding");
-          return;
-        }
-        try {
-          setProfile(JSON.parse(raw));
-          setLoading(false);
-        } catch {
-          navigate("/onboarding");
-        }
-        return;
-      }
-
-      unsubProfile = subscribeStudentProfile(
-        studentId,
-        (prof) => {
-          if (prof) {
-            setProfile(prof);
-          } else {
-            const raw = localStorage.getItem("studentProfile");
-            if (raw) {
-              try { setProfile(JSON.parse(raw)); } catch {}
-            } else {
-              navigate("/onboarding");
-            }
-          }
-          setLoading(false);
-        },
-        (err) => {
-          console.error("Profile subscription error:", err);
-          setLoading(false);
-        }
-      );
-
-      unsubMentorship = subscribeMentorshipForStudent(
-        studentId,
-        (record) => {
-          setMentorship(record);
-        },
-        (err) => {
-          console.error("Mentorship subscription error:", err);
-        }
-      );
-    };
-
-    setupSubscriptions();
-
+    const raw = localStorage.getItem("studentProfile");
+    if (!raw) {
+      navigate("/onboarding");
+      return;
+    }
+    try {
+      setProfile(JSON.parse(raw));
+    } catch {
+      navigate("/onboarding");
+    }
     if (searchParams.get("matched") === "true") {
       setShowWelcome(true);
       setTimeout(() => setShowWelcome(false), 4000);
     }
-
-    return () => {
-      if (unsubProfile) unsubProfile();
-      if (unsubMentorship) unsubMentorship();
-    };
   }, [navigate, searchParams]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0b]">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-neutral-400 mx-auto" />
-          <p className="text-sm text-neutral-400">Loading your mentorship dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  // Poll for mentorship updates (mentor accepting the request)
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => forceUpdate((n) => n + 1), 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (!profile) return null;
 
+  const mentorship = getMentorshipForStudent();
   const mentor = mentorship ? getMentorById(mentorship.mentorId) : null;
   const studentId = getStudentId();
   const isPending = mentorship?.status === "pending";
@@ -340,121 +277,6 @@ export default function StudentDashboard() {
                     >
                       <Calendar className="w-4 h-4" /> Schedule Call
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* AI Learning Roadmap & Tasks */}
-            {mentor && isActive && mentorship && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-neutral-900" />
-                      AI Learning Roadmap & Tasks
-                    </span>
-                    <span className="text-xs font-semibold bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full">
-                      {mentorship.progress || 0}% Complete
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Roadmap Stepper */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-neutral-800 mb-3">Milestones</h4>
-                    <div className="space-y-3">
-                      {(mentorship.roadmap || []).length === 0 ? (
-                        <p className="text-xs text-neutral-500 italic">No roadmap generated yet.</p>
-                      ) : (
-                        (mentorship.roadmap || []).map((step: any, index: number) => (
-                          <div key={step.id || index} className="flex items-start gap-3">
-                            <div className="flex flex-col items-center">
-                              <button
-                                onClick={async () => {
-                                  const newRoadmap = [...mentorship.roadmap];
-                                  newRoadmap[index] = {
-                                    ...step,
-                                    status: step.status === "done" ? "upcoming" : "done",
-                                  };
-                                  await updateRoadmapProgress(mentorship.id, newRoadmap);
-                                  showToast(step.status === "done" ? "Milestone marked incomplete" : "Milestone completed!");
-                                }}
-                                className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] font-bold transition-colors shrink-0 ${
-                                  step.status === "done"
-                                    ? "bg-[#0a0a0b] border-[#0a0a0b] text-white"
-                                    : "border-neutral-300 hover:border-neutral-900 bg-white text-neutral-400"
-                                }`}
-                              >
-                                {step.status === "done" ? "✓" : index + 1}
-                              </button>
-                              {index < mentorship.roadmap.length - 1 && (
-                                <div className="w-[2px] h-6 bg-neutral-200 my-1" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-sm font-medium ${step.status === "done" ? "line-through text-neutral-400" : "text-neutral-900"} truncate`}>
-                                {step.title}
-                              </div>
-                              {step.resources && step.resources.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {step.resources.map((res: string, idx: number) => (
-                                    <a
-                                      key={idx}
-                                      href="#"
-                                      onClick={(e) => { e.preventDefault(); showToast(`Opening resource: ${res}`); }}
-                                      className="text-[10px] text-neutral-500 hover:text-neutral-900 underline flex items-center gap-0.5"
-                                    >
-                                      <BookOpen className="w-2.5 h-2.5" /> {res}
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mentor Tasks */}
-                  <div className="border-t border-neutral-100 pt-4">
-                    <h4 className="text-sm font-semibold text-neutral-800 mb-3 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-neutral-600" />
-                      Tasks Assigned by Mentor
-                    </h4>
-                    {(!mentorship.tasks || mentorship.tasks.length === 0) ? (
-                      <p className="text-xs text-neutral-500 italic">No tasks assigned yet by your mentor.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {mentorship.tasks.map((task: any) => (
-                          <label
-                            key={task.id}
-                            className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                              task.done
-                                ? "bg-neutral-50/50 border-neutral-200"
-                                : "bg-white border-neutral-200 hover:border-neutral-300 shadow-sm"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={task.done}
-                              onChange={async () => {
-                                const newTasks = mentorship.tasks.map((t: any) =>
-                                  t.id === task.id ? { ...t, done: !t.done } : t
-                                );
-                                await updateMentorTasks(mentorship.id, newTasks);
-                                showToast(task.done ? "Task marked incomplete" : "Task completed!");
-                              }}
-                              className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                            />
-                            <span className={`text-sm ${task.done ? "line-through text-neutral-400" : "text-neutral-700 font-medium"}`}>
-                              {task.text}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
