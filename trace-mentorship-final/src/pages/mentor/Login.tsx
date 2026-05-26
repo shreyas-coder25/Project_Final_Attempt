@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { mentors, getMentorByUsername } from "@/src/data/mentors";
+import { saveMentorUser } from "@/src/lib/store";
 
 export default function MentorLogin() {
   const navigate = useNavigate();
@@ -12,15 +13,22 @@ export default function MentorLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     const mentor = getMentorByUsername(username.trim().toLowerCase());
     if (!mentor) { setError("No mentor found with this username."); return; }
     if (password !== "admin123") { setError("Incorrect password."); return; }
-    sessionStorage.setItem("mentorAuth", "true");
-    sessionStorage.setItem("mentorId", mentor.id);
-    navigate("/mentor");
+    
+    try {
+      await saveMentorUser(mentor);
+      sessionStorage.setItem("mentorAuth", "true");
+      sessionStorage.setItem("mentorId", mentor.id);
+      navigate("/mentor");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to sign in to Firebase.");
+    }
   };
 
   const quickLogin = (uname: string) => { setUsername(uname); setPassword("admin123"); setError(""); };

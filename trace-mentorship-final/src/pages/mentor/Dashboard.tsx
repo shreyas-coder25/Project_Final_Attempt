@@ -22,7 +22,7 @@ import { Button } from "@/src/components/ui/Button";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, type MentorProfile } from "@/src/data/mentors";
 import {
-  getMentorshipsForMentor,
+  subscribeMentorshipsForMentor,
   updateMentorshipStatus,
   deleteMentorship,
   type MentorshipRecord,
@@ -53,21 +53,19 @@ export default function MentorDashboard() {
       return;
     }
     setMentor(m);
-    setMentorships(getMentorshipsForMentor(mentorId));
-  }, [navigate]);
 
-  // Poll for new requests every 3s (so mentor sees student requests live)
-  useEffect(() => {
-    if (!mentor) return;
-    const interval = setInterval(() => {
-      setMentorships(getMentorshipsForMentor(mentor.id));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [mentor]);
+    const unsubscribe = subscribeMentorshipsForMentor(
+      mentorId,
+      (data) => setMentorships(data),
+      (err) => console.error("Mentorship sync error", err)
+    );
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   if (!mentor) return null;
 
-  const refreshData = () => setMentorships(getMentorshipsForMentor(mentor.id));
+  const refreshData = () => { /* No-op, real-time listener handles this */ };
   const active = mentorships.filter((r) => r.status === "active");
   const pending = mentorships.filter((r) => r.status === "pending");
   const showToast = (msg: string) => {

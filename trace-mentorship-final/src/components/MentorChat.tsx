@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X, Send, Phone, Video, MoreVertical } from "lucide-react";
 import { Button } from "./ui/Button";
 import {
-  getChatMessages,
+  subscribeChatMessages,
   addChatMessage,
   type ChatMessage,
 } from "@/src/lib/store";
@@ -55,17 +55,20 @@ export default function MentorChat({
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const loadMessages = useCallback(() => {
-    setMessages(getChatMessages(mentorId, studentId));
-  }, [mentorId, studentId]);
-
-  // Load messages when opened, and poll for new messages every 2s while open
+  // Load messages when opened, via real-time subscription
   useEffect(() => {
     if (!isOpen) return;
-    loadMessages();
-    const interval = setInterval(loadMessages, 2000);
-    return () => clearInterval(interval);
-  }, [isOpen, loadMessages]);
+    
+    const mentorshipId = `${mentorId}_${studentId}`;
+    
+    const unsubscribe = subscribeChatMessages(
+      mentorshipId,
+      (data) => setMessages(data),
+      (err) => console.error("Chat sync error", err)
+    );
+
+    return () => unsubscribe();
+  }, [isOpen, mentorId, studentId]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -83,7 +86,6 @@ export default function MentorChat({
     if (!input.trim()) return;
     addChatMessage(mentorId, studentId, role, input.trim());
     setInput("");
-    loadMessages();
   };
 
   const otherName = role === "student" ? mentorName : studentName;
