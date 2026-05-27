@@ -54,7 +54,16 @@ export async function ensureAuth(): Promise<User> {
   const { auth } = requireFirebase();
   if (auth.currentUser) return auth.currentUser;
   
-  throw new Error("User not authenticated. Please log in.");
+  return new Promise((resolve, reject) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      unsubscribe();
+      if (user) {
+        resolve(user);
+      } else {
+        reject(new Error("User not authenticated. Please log in."));
+      }
+    });
+  });
 }
 
 export function getCallable<TRequest, TResponse>(name: string) {
