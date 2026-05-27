@@ -24,7 +24,6 @@ export default function StudentLogin() {
           unsub();
           if (data) {
             // User exists, go to dashboard
-            localStorage.setItem("studentProfile", JSON.stringify(data));
             navigate("/student");
           } else {
             // New user, go to onboarding

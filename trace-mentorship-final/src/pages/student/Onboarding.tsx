@@ -152,8 +152,6 @@ export default function StudentOnboarding() {
     setIsSubmitting(true);
     
     try {
-      localStorage.setItem("studentProfile", JSON.stringify(data));
-      
       await saveStudentProfile(data);
       
       const mentor = assignMentorForDomain(data.domain);

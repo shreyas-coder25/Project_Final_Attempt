@@ -129,14 +129,45 @@ export async function saveMentorUser(mentor: MentorProfile): Promise<void> {
   await setDoc(
     doc(db, "users", `mentor_${mentor.id}`),
     {
+      ...mentor, // save full profile
       role: "mentor",
-      mentorId: mentor.id,
-      username: mentor.username,
-      name: mentor.name,
-      domain: mentor.domain,
       updatedAt: Date.now(),
     },
     { merge: true },
+  );
+}
+
+export async function saveMentorProfile(profile: MentorProfile): Promise<MentorProfile> {
+  const { db } = requireFirebase();
+  await ensureAuth();
+  await setDoc(
+    doc(db, "users", `mentor_${profile.id}`),
+    {
+      ...profile,
+      role: "mentor",
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+  return profile;
+}
+
+export function subscribeMentorProfile(
+  mentorId: string,
+  onUpdate: (data: MentorProfile | null) => void,
+  onError: (err: any) => void
+) {
+  const { db } = requireFirebase();
+  return onSnapshot(
+    doc(db, "users", `mentor_${mentorId}`),
+    (docSnap) => {
+      if (docSnap.exists()) {
+        onUpdate(docSnap.data() as MentorProfile);
+      } else {
+        onUpdate(null);
+      }
+    },
+    onError
   );
 }
 

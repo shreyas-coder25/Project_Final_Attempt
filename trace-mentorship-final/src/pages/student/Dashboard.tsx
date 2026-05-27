@@ -23,6 +23,8 @@ import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
 import { subscribeStudentProfile, subscribeMentorshipForStudent, getStudentId, type MentorshipRecord } from "@/src/lib/store";
 import { ensureAuth } from "@/src/lib/firebase";
+import { requireFirebase } from "@/src/lib/firebase";
+import StudentProfileEdit from "@/src/components/StudentProfileEdit";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -45,11 +47,8 @@ export default function StudentDashboard() {
         (data) => {
           if (data) {
             setProfile(data);
-            localStorage.setItem("studentProfile", JSON.stringify(data));
           } else {
-            const raw = localStorage.getItem("studentProfile");
-            if (raw) setProfile(JSON.parse(raw));
-            else navigate("/onboarding");
+            navigate("/onboarding");
           }
         },
         (err) => console.error("Profile sync error", err)
@@ -87,8 +86,9 @@ export default function StudentDashboard() {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   };
-  const handleLogout = () => {
-    localStorage.removeItem("studentProfile");
+  const handleLogout = async () => {
+    const { auth } = requireFirebase();
+    await auth.signOut();
     navigate("/");
   };
 
@@ -540,47 +540,12 @@ export default function StudentDashboard() {
 
       {/* Edit Profile Modal */}
       <AnimatePresence>
-        {editOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setEditOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl border border-neutral-200 p-8 max-w-sm w-full text-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Edit3 className="w-8 h-8 mx-auto mb-4 text-neutral-400" />
-              <h3 className="font-bold text-neutral-900 mb-2">Edit Profile</h3>
-              <p className="text-sm text-neutral-500 mb-6">
-                To update your profile, please go through the onboarding again
-                with your updated information.
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setEditOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    localStorage.removeItem("studentProfile");
-                    navigate("/onboarding");
-                  }}
-                >
-                  Re-onboard
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
+        {editOpen && profile && (
+          <StudentProfileEdit
+            profile={profile as any}
+            onClose={() => setEditOpen(false)}
+            onSave={(updated) => setProfile(updated)}
+          />
         )}
       </AnimatePresence>
     </div>

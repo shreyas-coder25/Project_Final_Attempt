@@ -27,6 +27,7 @@ import {
   deleteMentorship,
   type MentorshipRecord,
 } from "@/src/lib/store";
+import MentorProfileEdit from "@/src/components/MentorProfileEdit";
 
 export default function MentorDashboard() {
   const navigate = useNavigate();
@@ -54,13 +55,26 @@ export default function MentorDashboard() {
     }
     setMentor(m);
 
-    const unsubscribe = subscribeMentorshipsForMentor(
-      mentorId,
-      (data) => setMentorships(data),
-      (err) => console.error("Mentorship sync error", err)
-    );
+    import("@/src/lib/store").then(({ subscribeMentorProfile }) => {
+      const unsubProfile = subscribeMentorProfile(
+        mentorId,
+        (data) => {
+          if (data) setMentor(data);
+        },
+        (err) => console.error("Mentor profile sync error", err)
+      );
 
-    return () => unsubscribe();
+      const unsubscribe = subscribeMentorshipsForMentor(
+        mentorId,
+        (data) => setMentorships(data),
+        (err) => console.error("Mentorship sync error", err)
+      );
+
+      return () => {
+        unsubProfile();
+        unsubscribe();
+      };
+    });
   }, [navigate]);
 
   if (!mentor) return null;
@@ -512,77 +526,12 @@ export default function MentorDashboard() {
 
       {/* Profile Modal */}
       <AnimatePresence>
-        {profileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setProfileOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl border border-neutral-200 p-8 max-w-sm w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center mb-6">
-                <img
-                  src={mentor.avatar}
-                  alt={mentor.name}
-                  className="w-20 h-20 rounded-full mx-auto bg-neutral-100 mb-4 border-2 border-neutral-200"
-                />
-                <h3 className="text-xl font-bold text-neutral-900">
-                  {mentor.name}
-                </h3>
-                <p className="text-sm text-neutral-500">{mentor.title}</p>
-              </div>
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Domain</span>
-                  <span className="font-medium text-neutral-900">
-                    {mentor.domain}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Rating</span>
-                  <span className="font-medium text-neutral-900 flex items-center gap-1">
-                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
-                    {mentor.rating}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Active Mentees</span>
-                  <span className="font-medium text-neutral-900">
-                    {active.length}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Username</span>
-                  <span className="font-mono text-sm text-neutral-700">
-                    {mentor.username}
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-neutral-600 mb-6 leading-relaxed">
-                {mentor.bio}
-              </p>
-              <div className="flex flex-wrap gap-1.5 mb-6">
-                {mentor.expertise.map((e) => (
-                  <span
-                    key={e}
-                    className="px-2 py-0.5 bg-neutral-100 rounded text-xs font-medium text-neutral-700"
-                  >
-                    {e}
-                  </span>
-                ))}
-              </div>
-              <Button className="w-full" onClick={() => setProfileOpen(false)}>
-                Close
-              </Button>
-            </motion.div>
-          </motion.div>
+        {profileOpen && mentor && (
+          <MentorProfileEdit
+            profile={mentor}
+            onClose={() => setProfileOpen(false)}
+            onSave={(updated) => setMentor(updated)}
+          />
         )}
       </AnimatePresence>
 

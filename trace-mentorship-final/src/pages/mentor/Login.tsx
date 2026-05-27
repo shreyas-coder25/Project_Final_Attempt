@@ -21,6 +21,10 @@ export default function MentorLogin() {
     if (password !== "admin123") { setError("Incorrect password."); return; }
     
     try {
+      const { auth } = await import("@/src/lib/firebase").then(m => m.requireFirebase());
+      const { signInAnonymously } = await import("firebase/auth");
+      await signInAnonymously(auth);
+      
       await saveMentorUser(mentor);
       sessionStorage.setItem("mentorAuth", "true");
       sessionStorage.setItem("mentorId", mentor.id);
