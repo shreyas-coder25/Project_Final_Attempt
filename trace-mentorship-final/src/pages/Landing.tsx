@@ -40,7 +40,7 @@ export default function Landing() {
               </h1>
               <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">Get real, actionable guidance from experienced senior mentors in Web Dev, AI/ML, Cybersecurity, App Development, Placements, and more.</p>
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                <Link to="/onboarding"><Button size="lg" className="w-full sm:w-auto gap-2 text-base h-12 px-8">Find My Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
+                <Link to="/login"><Button size="lg" className="w-full sm:w-auto gap-2 text-base h-12 px-8">Find My Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
                 <a href="#domains"><Button variant="outline" size="lg" className="w-full sm:w-auto h-12 px-8 text-base">Explore Domains</Button></a>
               </div>
               <div className="flex items-center gap-6 text-sm text-neutral-500 font-medium">

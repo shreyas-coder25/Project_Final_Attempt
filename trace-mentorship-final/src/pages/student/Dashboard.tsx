@@ -61,9 +61,7 @@ export default function StudentDashboard() {
         (err) => console.error("Mentorship sync error", err)
       );
     }).catch(() => {
-      const raw = localStorage.getItem("studentProfile");
-      if (raw) setProfile(JSON.parse(raw));
-      else navigate("/onboarding");
+      navigate("/login");
     });
 
     if (searchParams.get("matched") === "true") {

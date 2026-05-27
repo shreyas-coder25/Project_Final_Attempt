@@ -26,7 +26,7 @@ export default function DomainDetail() {
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {domainMentors.length} Active Mentor{domainMentors.length !== 1 ? "s" : ""}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link to="/onboarding"><Button size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 bg-white text-neutral-900 hover:bg-neutral-100">Find a Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
+              <Link to="/login"><Button size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 bg-white text-neutral-900 hover:bg-neutral-100">Find a Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
               <a href="#roadmap"><Button variant="outline" size="lg" className="w-full sm:w-auto h-12 px-8 border-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white">View Roadmap</Button></a>
             </div>
           </motion.div>
@@ -125,7 +125,7 @@ export default function DomainDetail() {
           <GraduationCap className="w-10 h-10 mx-auto mb-4 text-neutral-400" />
           <h2 className="text-3xl font-bold tracking-tight mb-3">Ready to start your {domain.title} journey?</h2>
           <p className="text-neutral-400 max-w-md mx-auto mb-8">Get matched with one of {domainMentors.length} experienced mentors who'll guide you from beginner to job-ready.</p>
-          <Link to="/onboarding"><Button size="lg" className="h-12 px-10 bg-white text-neutral-900 hover:bg-neutral-100 gap-2">Find My Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
+          <Link to="/login"><Button size="lg" className="h-12 px-10 bg-white text-neutral-900 hover:bg-neutral-100 gap-2">Find My Mentor <ArrowRight className="w-4 h-4" /></Button></Link>
         </div>
       </section>
     </div>

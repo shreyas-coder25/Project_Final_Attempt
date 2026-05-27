@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } f
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import Landing from "./pages/Landing";
+import StudentLogin from "./pages/student/Login";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentOnboarding from "./pages/student/Onboarding";
 import MentorDashboard from "./pages/mentor/Dashboard";
@@ -62,7 +63,7 @@ function AppContent() {
                 <Link to="/mentor/login" className="hidden sm:block text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
                   Mentor Login
                 </Link>
-                <Link to="/onboarding" className="hidden sm:inline-flex h-9 items-center justify-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-neutral-50 shadow transition-colors hover:bg-neutral-900/90 whitespace-nowrap">
+                <Link to="/login" className="hidden sm:inline-flex h-9 items-center justify-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-neutral-50 shadow transition-colors hover:bg-neutral-900/90 whitespace-nowrap">
                   Find My Mentor
                 </Link>
               </>
@@ -93,7 +94,7 @@ function AppContent() {
               </>
             )}
             <Link to="/mentor/login" className="block text-sm font-medium text-neutral-600 hover:text-neutral-900 py-1">Mentor Login</Link>
-            <Link to="/onboarding" className="block text-center rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-neutral-50 shadow hover:bg-neutral-900/90">
+            <Link to="/login" className="block text-center rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-neutral-50 shadow hover:bg-neutral-900/90">
               Find My Mentor
             </Link>
           </div>
@@ -103,6 +104,7 @@ function AppContent() {
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<StudentLogin />} />
           <Route path="/domain/:slug" element={<DomainDetail />} />
           <Route path="/onboarding" element={<StudentOnboarding />} />
           <Route path="/student" element={<StudentDashboard />} />

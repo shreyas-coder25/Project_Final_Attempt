@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ensureAuth } from "@/src/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
@@ -114,6 +115,11 @@ export default function StudentOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  useEffect(() => {
+    ensureAuth().catch(() => navigate("/login"));
+  }, [navigate]);
+
   const [data, setData] = useState({
     name: "",
     branch: "",
