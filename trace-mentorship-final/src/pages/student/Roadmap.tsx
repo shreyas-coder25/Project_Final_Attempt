@@ -42,6 +42,10 @@ export default function RoadmapPage() {
     timeCommitment: ""
   });
 
+  const updateFormData = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
   useEffect(() => {
     ensureAuth()
       .then(async (user) => {
@@ -108,7 +112,12 @@ export default function RoadmapPage() {
                 <button
                   key={domain.title}
                   onClick={() => {
-                    setFormData({ ...formData, majorDomain: domain.title, targetRoles: [], currentSkills: [], isAbsoluteBeginner: false });
+                    updateFormData({ 
+                      majorDomain: domain.title, 
+                      targetRoles: [], 
+                      currentSkills: [], 
+                      isAbsoluteBeginner: false 
+                    });
                   }}
                   className={`p-6 rounded-2xl border-2 text-left transition-all ${
                     formData.majorDomain === domain.title
@@ -134,75 +143,196 @@ export default function RoadmapPage() {
             </div>
           </motion.div>
         );
-      case 2:
+      case 2: {
+        const domainData = domainMatrix[formData.majorDomain];
+        if (!domainData) return null;
+        
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <h3 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-indigo-500" /> What is your target role or primary goal?
+            <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
+              <Target className="w-5 h-5 text-indigo-500" /> What are your target roles and skills?
             </h3>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {["Crack an internship", "Build a strong portfolio", "Clear GATE/Masters", "Land a full-time job", "Learn for fun"].map((chip) => (
-                <button
-                  key={chip}
-                  onClick={() => setFormData({ ...formData, targetRole: chip })}
-                  className="px-3 py-1.5 rounded-full bg-neutral-100 text-sm font-medium text-neutral-700 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
-                >
-                  {chip}
-                </button>
-              ))}
+            
+            <div className="space-y-8">
+              {/* Target Roles */}
+              <div>
+                <label className="text-sm font-semibold text-neutral-700 block mb-3">
+                  Target Roles (Select one or more)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {domainData.roles.map((role) => {
+                    const isSelected = formData.targetRoles.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => {
+                          const newRoles = isSelected 
+                            ? formData.targetRoles.filter(r => r !== role)
+                            : [...formData.targetRoles, role];
+                          updateFormData({ targetRoles: newRoles });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                          isSelected 
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-sm" 
+                            : "bg-white border-neutral-200 text-neutral-700 hover:border-indigo-300 hover:bg-indigo-50"
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Current Skills */}
+              <div className="pt-6 border-t border-neutral-100">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-semibold text-neutral-700 block">
+                    Current Skills
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-700 cursor-pointer bg-amber-50 px-2 py-1 rounded border border-amber-200 hover:bg-amber-100 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      className="accent-amber-600 w-3.5 h-3.5 cursor-pointer"
+                      checked={formData.isAbsoluteBeginner}
+                      onChange={(e) => {
+                        const isBeginner = e.target.checked;
+                        updateFormData({ 
+                          isAbsoluteBeginner: isBeginner,
+                          currentSkills: isBeginner ? [] : formData.currentSkills
+                        });
+                      }}
+                    />
+                    None / Absolute Beginner
+                  </label>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {domainData.skills.map((skill) => {
+                    const isSelected = formData.currentSkills.includes(skill);
+                    const disabled = formData.isAbsoluteBeginner;
+                    return (
+                      <button
+                        key={skill}
+                        disabled={disabled}
+                        onClick={() => {
+                          const newSkills = isSelected
+                            ? formData.currentSkills.filter(s => s !== skill)
+                            : [...formData.currentSkills, skill];
+                          updateFormData({ currentSkills: newSkills });
+                        }}
+                        className={`px-3 py-1.5 rounded border text-sm font-medium transition-colors ${
+                          disabled 
+                            ? "opacity-50 cursor-not-allowed bg-neutral-50 border-neutral-200 text-neutral-400"
+                            : isSelected
+                              ? "bg-neutral-900 border-neutral-900 text-white shadow-sm"
+                              : "bg-white border-neutral-200 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
+                        }`}
+                      >
+                        {skill}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            <input
-              type="text"
-              placeholder="Or type your specific goal..."
-              value={formData.targetRole}
-              onChange={(e) => setFormData({ ...formData, targetRole: e.target.value })}
-              className="w-full p-3 rounded-xl border border-neutral-300 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none"
-            />
+
             <div className="mt-8 flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!formData.targetRole.trim()} className="gap-2">
+              <Button 
+                onClick={() => setStep(3)} 
+                disabled={formData.targetRoles.length === 0 || (!formData.isAbsoluteBeginner && formData.currentSkills.length === 0)} 
+                className="gap-2"
+              >
                 Next <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </motion.div>
         );
+      }
       case 3:
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <h3 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-500" /> What is your timeline & commitment?
+            <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-500" /> Final details
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              <label className="text-sm font-semibold text-neutral-600 col-span-full">Timeline</label>
-              {["3 Months", "6 Months", "1 Year", "2 Years", "3 Years", "4 Years"].map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setFormData({ ...formData, deadline: time })}
-                  className={`p-3 rounded-xl border-2 text-center transition-all ${
-                    formData.deadline.includes(time)
-                      ? "border-indigo-600 bg-indigo-50 font-bold text-indigo-900"
-                      : "border-neutral-200 bg-white hover:border-indigo-200 text-neutral-700"
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
+            
+            <div className="space-y-6">
+              {/* Current Level */}
+              <div>
+                <label className="text-sm font-semibold text-neutral-700 block mb-2">Current Level</label>
+                <div className="flex gap-3">
+                  {["Beginner", "Intermediate"].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => updateFormData({ currentLevel: level })}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.currentLevel === level
+                          ? "bg-indigo-50 border-indigo-600 text-indigo-700"
+                          : "bg-white border-neutral-200 text-neutral-600 hover:border-indigo-300"
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Primary Goal */}
+              <div>
+                <label className="text-sm font-semibold text-neutral-700 block mb-2">Primary Goal</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {["Internship", "Build a Project", "General Upskilling"].map((goal) => (
+                    <button
+                      key={goal}
+                      onClick={() => updateFormData({ primaryGoal: goal })}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                        formData.primaryGoal === goal
+                          ? "bg-neutral-900 border-neutral-900 text-white"
+                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                      }`}
+                    >
+                      {goal}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Or specify another goal..."
+                  value={!["Internship", "Build a Project", "General Upskilling", ""].includes(formData.primaryGoal) ? formData.primaryGoal : ""}
+                  onChange={(e) => updateFormData({ primaryGoal: e.target.value })}
+                  className="w-full p-2.5 text-sm rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                />
+              </div>
+
+              {/* Time Commitment */}
+              <div>
+                <label className="text-sm font-semibold text-neutral-700 block mb-2">Weekly Time Commitment</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["1-3 hrs", "3-5 hrs", "10+ hrs"].map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => updateFormData({ timeCommitment: time })}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.timeCommitment === time
+                          ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                          : "bg-white border-neutral-200 text-neutral-600 hover:border-emerald-300"
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="grid gap-3">
-              <label className="text-sm font-semibold text-neutral-600">Weekly Commitment</label>
-              <select 
-                onChange={(e) => setFormData({ ...formData, deadline: formData.deadline.split(" | ")[0] + " | " + e.target.value })}
-                className="w-full p-3 rounded-xl border border-neutral-300 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none bg-white"
-              >
-                <option value="">Select hours...</option>
-                <option value="1-2 hours/week">1-2 hours/week (Light)</option>
-                <option value="3-5 hours/week">3-5 hours/week (Moderate)</option>
-                <option value="10+ hours/week">10+ hours/week (Intense)</option>
-              </select>
-            </div>
+
             <div className="mt-8 flex justify-between">
               <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              <Button onClick={handleGenerate} disabled={!formData.deadline.includes("|") || isGenerating} className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button 
+                onClick={handleGenerate} 
+                disabled={!formData.currentLevel || !formData.primaryGoal.trim() || !formData.timeCommitment || isGenerating} 
+                className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+              >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {isGenerating ? "Generating..." : "Generate Roadmap"}
               </Button>
