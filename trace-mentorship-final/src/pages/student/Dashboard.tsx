@@ -496,11 +496,10 @@ export default function StudentDashboard() {
                   Quick Actions
                 </h4>
                 <button
-                  onClick={() => showToast("Resources page coming soon!")}
-                  className="w-full text-left p-3 rounded-xl bg-neutral-50 border border-neutral-100 hover:bg-neutral-100 transition-colors text-sm font-medium text-neutral-700 flex items-center gap-2"
+                  onClick={() => navigate("/roadmap")}
+                  className="w-full text-left p-3 rounded-xl bg-indigo-600 border border-indigo-700 hover:bg-indigo-700 transition-colors text-sm font-medium text-white flex items-center gap-2"
                 >
-                  <BookOpen className="w-4 h-4 text-neutral-500" /> Browse
-                  Resources
+                  <Sparkles className="w-4 h-4 text-indigo-200" /> My AI Roadmap
                 </button>
                 <button
                   onClick={() => showToast("Join link copied to clipboard!")}

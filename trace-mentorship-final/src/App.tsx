@@ -10,6 +10,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/student/Login";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentOnboarding from "./pages/student/Onboarding";
+import RoadmapPage from "./pages/student/Roadmap";
 import MentorDashboard from "./pages/mentor/Dashboard";
 import MentorOnboarding from "./pages/mentor/Onboarding";
 import DomainDetail from "./pages/DomainDetail";
@@ -170,6 +171,7 @@ function AppContent() {
           <Route path="/domain/:slug" element={<DomainDetail />} />
           <Route path="/onboarding" element={<StudentOnboarding />} />
           <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/mentor/onboarding" element={<MentorOnboarding />} />
           <Route path="/mentor" element={<MentorDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
