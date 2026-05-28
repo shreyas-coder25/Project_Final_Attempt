@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -182,6 +183,18 @@ export function subscribeStudentProfile(
     (snap) => onChange(snap.exists() ? (snap.data() as StudentProfile) : null),
     onError,
   );
+}
+
+export async function getStudentProfile(studentId: string): Promise<StudentProfile | null> {
+  const { db } = requireFirebase();
+  const snap = await getDoc(doc(db, "users", studentId));
+  return snap.exists() ? (snap.data() as StudentProfile) : null;
+}
+
+export async function getMentorProfile(mentorId: string): Promise<MentorProfile | null> {
+  const { db } = requireFirebase();
+  const snap = await getDoc(doc(db, "users", `mentor_${mentorId}`));
+  return snap.exists() ? (snap.data() as MentorProfile) : null;
 }
 
 async function getAllActiveMentorships() {

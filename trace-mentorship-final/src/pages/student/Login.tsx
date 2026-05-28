@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, AlertCircle } from "lucide-react";
@@ -11,31 +11,55 @@ export default function StudentLogin() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    import("@/src/lib/firebase").then(({ requireFirebase }) => {
+      const { auth } = requireFirebase();
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          processLogin(user);
+        }
+      });
+      return () => unsubscribe();
+    });
+  }, []);
+
+  const processLogin = async (user: any) => {
+    setIsLoading(true);
+    try {
+      const { getStudentProfile, getMentorProfile } = await import("@/src/lib/store");
+      
+      const [studentProfile, mentorProfile] = await Promise.all([
+        getStudentProfile(user.uid),
+        getMentorProfile(user.uid)
+      ]);
+
+      const hasStudent = !!studentProfile;
+      const hasMentor = !!mentorProfile;
+      const lastView = localStorage.getItem("lastActiveView") || "student";
+
+      if (hasStudent && hasMentor) {
+        navigate(lastView === "mentor" ? "/mentor" : "/student");
+      } else if (hasMentor) {
+        localStorage.setItem("lastActiveView", "mentor");
+        navigate("/mentor");
+      } else if (hasStudent) {
+        localStorage.setItem("lastActiveView", "student");
+        navigate("/student");
+      } else {
+        navigate("/onboarding");
+      }
+    } catch (err) {
+      console.error("Profile check error:", err);
+      navigate("/onboarding");
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setError("");
     setIsLoading(true);
     try {
       const user = await signInWithGoogle();
-      
-      // Check if user already has a profile
-      const unsub = subscribeStudentProfile(
-        user.uid,
-        (data) => {
-          unsub();
-          if (data) {
-            // User exists, go to dashboard
-            navigate("/student");
-          } else {
-            // New user, go to onboarding
-            navigate("/onboarding");
-          }
-        },
-        (err) => {
-          console.error("Profile check error:", err);
-          unsub();
-          navigate("/onboarding");
-        }
-      );
+      processLogin(user);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to sign in with Google.");

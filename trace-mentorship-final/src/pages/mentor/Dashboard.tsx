@@ -42,38 +42,38 @@ export default function MentorDashboard() {
   const [mentorships, setMentorships] = useState<MentorshipRecord[]>([]);
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("mentorAuth");
-    const mentorId = sessionStorage.getItem("mentorId");
-    if (auth !== "true" || !mentorId) {
-      navigate("/mentor/login");
-      return;
-    }
-    const m = getMentorById(mentorId);
-    if (!m) {
-      navigate("/mentor/login");
-      return;
-    }
-    setMentor(m);
+    import("@/src/lib/firebase").then(async ({ ensureAuth }) => {
+      try {
+        const currentUser = await ensureAuth();
+        const mentorId = currentUser.uid;
 
-    import("@/src/lib/store").then(({ subscribeMentorProfile }) => {
-      const unsubProfile = subscribeMentorProfile(
-        mentorId,
-        (data) => {
-          if (data) setMentor(data);
-        },
-        (err) => console.error("Mentor profile sync error", err)
-      );
+        import("@/src/lib/store").then(({ subscribeMentorProfile, subscribeMentorshipsForMentor }) => {
+          const unsubProfile = subscribeMentorProfile(
+            mentorId,
+            (data) => {
+              if (data) {
+                setMentor(data);
+              } else {
+                navigate("/mentor/onboarding");
+              }
+            },
+            (err) => console.error("Mentor profile sync error", err)
+          );
 
-      const unsubscribe = subscribeMentorshipsForMentor(
-        mentorId,
-        (data) => setMentorships(data),
-        (err) => console.error("Mentorship sync error", err)
-      );
+          const unsubscribe = subscribeMentorshipsForMentor(
+            mentorId,
+            (data) => setMentorships(data),
+            (err) => console.error("Mentorship sync error", err)
+          );
 
-      return () => {
-        unsubProfile();
-        unsubscribe();
-      };
+          return () => {
+            unsubProfile();
+            unsubscribe();
+          };
+        });
+      } catch (err) {
+        navigate("/login");
+      }
     });
   }, [navigate]);
 
