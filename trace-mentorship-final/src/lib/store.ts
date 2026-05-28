@@ -41,6 +41,34 @@ export interface RoadmapMilestone {
   resources?: string[];
 }
 
+export interface RoadmapResource {
+  title: string;
+  url: string;
+  type: "video" | "doc" | "course";
+}
+
+export interface GeneratedRoadmapMilestone {
+  id: string;
+  phase: "short-term" | "long-term";
+  title: string;
+  description: string;
+  weekRange: string;
+  estimatedHours: number;
+  skills: string[];
+  resources: RoadmapResource[];
+  status: "upcoming" | "active" | "done";
+}
+
+export interface GeneratedRoadmap {
+  generatedAt: string;
+  domain: string;
+  targetRole: string;
+  totalWeeks: number;
+  honestAdvice: string;
+  mentorNote: string;
+  milestones: GeneratedRoadmapMilestone[];
+}
+
 export interface MentorTask {
   id: string;
   text: string;
@@ -368,4 +396,23 @@ export async function addChatMessage(
     text,
     timestamp: Date.now(),
   });
+}
+
+export async function saveGeneratedRoadmap(uid: string, roadmap: GeneratedRoadmap): Promise<void> {
+  const { db } = requireFirebase();
+  await setDoc(
+    doc(db, "users", uid),
+    { aiRoadmap: roadmap, updatedAt: Date.now() },
+    { merge: true }
+  );
+}
+
+export async function getGeneratedRoadmap(uid: string): Promise<GeneratedRoadmap | null> {
+  const { db } = requireFirebase();
+  const snap = await getDoc(doc(db, "users", uid));
+  if (snap.exists()) {
+    const data = snap.data();
+    return data.aiRoadmap as GeneratedRoadmap | null;
+  }
+  return null;
 }
