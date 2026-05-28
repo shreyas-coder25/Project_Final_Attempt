@@ -5,7 +5,19 @@ import { ensureAuth } from "@/src/lib/firebase";
 import { getStudentProfile, getGeneratedRoadmap, saveGeneratedRoadmap, type GeneratedRoadmap } from "@/src/lib/store";
 import { generatePersonalizedRoadmap } from "@/src/lib/gemini";
 import RoadmapView from "@/src/components/RoadmapView";
-import { ArrowLeft, Sparkles, Target, Clock, Zap, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
+import { domainMatrix } from "@/src/data/domainMatrix";
+import { ArrowLeft, Sparkles, Target, Clock, Zap, ChevronRight, CheckCircle2, Loader2, Code, Settings, PenTool, Briefcase } from "lucide-react";
+
+// Helper for icons
+const getDomainIcon = (title: string) => {
+  switch (title) {
+    case "Software & AI": return <Code className="w-8 h-8 text-indigo-500 mb-4" />;
+    case "Core Engineering": return <Settings className="w-8 h-8 text-orange-500 mb-4" />;
+    case "Design & Product": return <PenTool className="w-8 h-8 text-pink-500 mb-4" />;
+    case "Business & Management": return <Briefcase className="w-8 h-8 text-emerald-500 mb-4" />;
+    default: return <Sparkles className="w-8 h-8 text-indigo-500 mb-4" />;
+  }
+};
 import { Button } from "@/src/components/ui/Button";
 
 export default function RoadmapPage() {
@@ -21,9 +33,13 @@ export default function RoadmapPage() {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
-    skillLevel: "",
-    targetRole: "",
-    deadline: ""
+    majorDomain: "",
+    targetRoles: [] as string[],
+    currentSkills: [] as string[],
+    isAbsoluteBeginner: false,
+    currentLevel: "",
+    primaryGoal: "",
+    timeCommitment: ""
   });
 
   useEffect(() => {
@@ -52,10 +68,10 @@ export default function RoadmapPage() {
     setIsGenerating(true);
     try {
       const generated = await generatePersonalizedRoadmap({
-        domain: studentDomain || "Engineering",
-        skillLevel: formData.skillLevel,
-        targetRole: formData.targetRole,
-        deadline: formData.deadline
+        domain: formData.majorDomain || studentDomain || "Engineering",
+        skillLevel: formData.currentLevel || "Beginner",
+        targetRole: formData.targetRoles.join(", ") || formData.primaryGoal || "General",
+        deadline: formData.timeCommitment || "3 Months"
       });
       await saveGeneratedRoadmap(userId, generated);
       setRoadmapData(generated);
@@ -84,29 +100,35 @@ export default function RoadmapPage() {
       case 1:
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <h3 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-indigo-500" /> What is your current skill level in {studentDomain}?
+            <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-indigo-500" /> Choose your primary path
             </h3>
-            <div className="grid gap-3">
-              {["Beginner (Just starting out)", "Intermediate (Know the basics, built some projects)", "Advanced (Looking for deep expertise/mastery)"].map((level) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Object.values(domainMatrix).map((domain) => (
                 <button
-                  key={level}
-                  onClick={() => setFormData({ ...formData, skillLevel: level })}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    formData.skillLevel === level
-                      ? "border-indigo-600 bg-indigo-50"
-                      : "border-neutral-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/50"
+                  key={domain.title}
+                  onClick={() => {
+                    setFormData({ ...formData, majorDomain: domain.title, targetRoles: [], currentSkills: [], isAbsoluteBeginner: false });
+                  }}
+                  className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                    formData.majorDomain === domain.title
+                      ? "border-indigo-600 bg-indigo-50/50 shadow-md ring-1 ring-indigo-100"
+                      : "border-neutral-200 bg-white hover:border-indigo-200 hover:bg-neutral-50 shadow-sm"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-neutral-800">{level}</span>
-                    {formData.skillLevel === level && <CheckCircle2 className="w-5 h-5 text-indigo-600" />}
+                  {getDomainIcon(domain.title)}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-neutral-900 text-lg mb-1">{domain.title}</h4>
+                      <p className="text-sm text-neutral-500 leading-relaxed">{domain.description}</p>
+                    </div>
+                    {formData.majorDomain === domain.title && <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0 ml-2" />}
                   </div>
                 </button>
               ))}
             </div>
             <div className="mt-8 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!formData.skillLevel} className="gap-2">
+              <Button onClick={() => setStep(2)} disabled={!formData.majorDomain} className="gap-2">
                 Next <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
