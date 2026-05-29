@@ -27,12 +27,12 @@ The application starts in a clean, empty state and builds dynamically through ac
 
 ## 🏗️ Core Architecture & Philosophy
 
-### Zero Backend, Complete Realism (`src/lib/store.ts`)
-To achieve production-grade realism without requiring reviewers to set up databases (like PostgreSQL or MongoDB), Trace uses a custom Relational Store built on top of the browser's `localStorage` API. 
-- It maintains relational links between a `studentId` and `mentorId` through `MentorshipRecord` objects.
-- It provides CRUD operations for mentorships: `createMentorship`, `updateMentorshipStatus`, `deleteMentorship`.
+### Real-Time Backend (`src/lib/store.ts` & `src/lib/firebase.ts`)
+To achieve production-grade realism and true multi-device synchronization, Trace uses **Firebase Firestore** and **Firebase Authentication**. 
+- It maintains relational links between a `studentId` and `mentorId` through `MentorshipRecord` objects stored in Firestore.
+- It provides real-time CRUD operations for mentorships: `createMentorship`, `updateMentorshipStatus`, `deleteMentorship`.
 - It handles complex operations like **Load-Balanced Mentor Matching**: When a student picks a domain, the system queries all mentors in that domain, counts their active mentees, and automatically assigns the mentor with the lowest workload.
-- **Cross-Tab Synchronization**: Because it relies on standard `localStorage`, a user can open the Student Dashboard in one browser window and the Mentor Dashboard in another. Actions taken by the student (like sending a message) are immediately visible to the mentor.
+- **Cross-Device Synchronization**: Because it relies on Firestore's real-time listeners, a user can open the Student Dashboard on one device and the Mentor Dashboard on another. Actions taken by the student (like sending a message) are instantaneously synchronized and visible to the mentor.
 
 ### 🧠 Gemini AI Integration (`src/lib/gemini.ts`)
 Trace deeply integrates **Google's Gemini 2.0 Flash** via the `@google/genai` SDK to serve as an intelligent assistant bridging the gap between mentor sessions.
@@ -53,9 +53,9 @@ Trace deeply integrates **Google's Gemini 2.0 Flash** via the `@google/genai` SD
 6. **Active Mentorship**: Once the mentor accepts, the real-time `MentorChat` component unlocks, allowing two-way persistent messaging.
 
 ### 👨‍🏫 The Mentor Workflow
-Trace ships with **26 curated mentor profiles** across the 7 domains.
-1. **Authentication**: Mentors log in via a dedicated portal (`/mentor/login`) using their specific username (e.g., `arjun.ai` or `nikhil.web`).
-2. **Requests Inbox**: The mentor's dashboard constantly polls for new `MentorshipRecord` objects in the `pending` state.
+Trace allows users to act as mentors and manages real-time interactions with students.
+1. **Authentication**: Mentors authenticate using Firebase Authentication (e.g., Google Sign-In) and complete an onboarding flow (`/mentor/onboarding`) to create their professional profile.
+2. **Requests Inbox**: The mentor's dashboard listens in real-time via Firestore for new `MentorshipRecord` objects in the `pending` state.
 3. **Review & Action**: The mentor reviews the student's profile, skills, and goals. They can **Accept** or **Decline** the request.
 4. **Mentees Management**: Accepted students move to the "Active Mentees" tab.
 5. **Live Chat**: The mentor can open the chat panel to reply to student messages, assign roadmap tasks, or eventually **Archive** the mentorship when complete.
@@ -94,9 +94,15 @@ Follow these exact steps to run the Trace Mentorship platform locally on your ma
    ```
 
 3. **Environment Configuration:**
-   Create a `.env` file in the root directory (you can copy `.env.example`). You must provide a Google Gemini API Key for the AI features to work. Get one for free at [Google AI Studio](https://aistudio.google.com/apikey).
+   Create a `.env` file in the root directory (you can copy `.env.example`). You must provide a Google Gemini API Key for the AI features and your Firebase configuration. Get a Gemini API key for free at [Google AI Studio](https://aistudio.google.com/apikey).
    ```env
    VITE_GEMINI_API_KEY=your_gemini_api_key_here
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
    ```
 
 4. **Start the Development Server:**
@@ -111,12 +117,12 @@ Follow these exact steps to run the Trace Mentorship platform locally on your ma
 
 To experience the full capability of the relational local engine and the two-way messaging, follow this exact testing path:
 
-1. **Open Window A (Student)**: Go to `http://localhost:3000`. Click **Find My Mentor**, fill out the onboarding form (e.g., choose "AI / ML"). Once submitted, note the name of the mentor you were assigned (e.g., *Arjun Mehta*).
-2. **Open Window B (Mentor)**: Open an incognito window or a different browser, and go to `http://localhost:3000/mentor/login`. 
-3. **Login as Mentor**: Look at the available mentors on the login page or refer to `src/data/mentors.ts`. Enter the username of the mentor assigned in step 1 (e.g., `arjun.ai`).
-4. **Accept Request**: In Window B, you will see the pending request from your student profile. Click **Accept**.
-5. **Watch the Sync**: Look back at Window A. Within 3 seconds, the student dashboard will automatically update from "Pending" to "Active", unlocking the chat interface.
-6. **Chat**: Send a message from Window A. See it appear in Window B. Reply from Window B. See it appear in Window A.
+1. **Open Window A (Student)**: Go to `http://localhost:3000`. Click **Sign In** and authenticate. Complete the student onboarding form (e.g., choose "AI / ML"). Once submitted, you'll be assigned a mentor or wait in the pending state.
+2. **Open Window B (Mentor)**: Open an incognito window or a different browser, and go to `http://localhost:3000/login`. Authenticate with a different Google account.
+3. **Onboard as Mentor**: Complete the mentor onboarding at `/mentor/onboarding`. Ensure you select the domain that matches the student's request in step 1.
+4. **Accept Request**: Navigate to the Mentor Dashboard. You will see the pending request from the student profile. Click **Accept**.
+5. **Watch the Sync**: Look back at Window A. Instantly via Firestore, the student dashboard will automatically update from "Pending" to "Active", unlocking the chat interface.
+6. **Chat**: Send a message from Window A. See it appear in Window B in real-time. Reply from Window B. See it appear in Window A.
 
 ---
 
