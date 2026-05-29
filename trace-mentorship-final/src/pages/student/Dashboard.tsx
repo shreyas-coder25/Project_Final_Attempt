@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/Ca
 import AssistantChat from "@/src/components/AssistantChat";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
-import { subscribeStudentProfile, subscribeMentorshipForStudent, getStudentId, type MentorshipRecord } from "@/src/lib/store";
+import { subscribeStudentProfile, subscribeMentorshipForStudent, getStudentId, resetStudentProfile, type MentorshipRecord } from "@/src/lib/store";
 import { ensureAuth } from "@/src/lib/firebase";
 import { requireFirebase } from "@/src/lib/firebase";
 import StudentProfileEdit from "@/src/components/StudentProfileEdit";
@@ -36,6 +36,8 @@ export default function StudentDashboard() {
   const [chatOpen, setChatOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     let unsubProfile: (() => void) | undefined;
@@ -502,6 +504,12 @@ export default function StudentDashboard() {
                   <Sparkles className="w-4 h-4 text-indigo-200" /> My AI Roadmap
                 </button>
                 <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="w-full text-left p-3 rounded-xl bg-red-50 border border-red-100 hover:bg-red-100 transition-colors text-sm font-medium text-red-600 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" /> Restart Onboarding
+                </button>
+                <button
                   onClick={() => showToast("Join link copied to clipboard!")}
                   className="w-full text-left p-3 rounded-xl bg-neutral-50 border border-neutral-100 hover:bg-neutral-100 transition-colors text-sm font-medium text-neutral-700 flex items-center gap-2"
                 >
@@ -545,6 +553,62 @@ export default function StudentDashboard() {
             onClose={() => setEditOpen(false)}
             onSave={(updated) => setProfile(updated)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => !isResetting && setShowResetConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl border border-neutral-200 p-8 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-neutral-900 mb-2 flex items-center gap-2">
+                <LogOut className="w-5 h-5 text-red-500" /> Restart Onboarding?
+              </h3>
+              <p className="text-sm text-neutral-500 mb-6">
+                This will permanently delete your current profile and unmatch you from your mentor. You cannot undo this action.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={isResetting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setIsResetting(true);
+                    try {
+                      await resetStudentProfile();
+                      // Redirect happens via subscription listener automatically
+                    } catch (err) {
+                      console.error("Reset failed", err);
+                      showToast("Failed to reset profile. Please try again.");
+                      setIsResetting(false);
+                      setShowResetConfirm(false);
+                    }
+                  }}
+                  disabled={isResetting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 shadow-none"
+                >
+                  {isResetting ? "Resetting..." : "Yes, Reset"}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

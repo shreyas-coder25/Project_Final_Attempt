@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/src/components/ui/Button";
 import { saveMentorProfile } from "@/src/lib/store";
 import { requireFirebase } from "@/src/lib/firebase";
+import { domainMatrix } from "@/src/data/domainMatrix";
 
 export default function MentorOnboarding() {
   const navigate = useNavigate();
@@ -92,11 +93,9 @@ export default function MentorOnboarding() {
               className="w-full h-11 px-4 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-colors bg-white"
             >
               <option value="" disabled>Select your primary domain</option>
-              <option value="Web Development">Web Development</option>
-              <option value="AI / ML">AI / ML</option>
-              <option value="Data Science">Data Science</option>
-              <option value="Cybersecurity">Cybersecurity</option>
-              <option value="App Development">App Development</option>
+              {Object.keys(domainMatrix).map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
 

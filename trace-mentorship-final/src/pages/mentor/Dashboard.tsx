@@ -25,6 +25,7 @@ import {
   subscribeMentorshipsForMentor,
   updateMentorshipStatus,
   deleteMentorship,
+  resetMentorProfile,
   type MentorshipRecord,
 } from "@/src/lib/store";
 import MentorProfileEdit from "@/src/components/MentorProfileEdit";
@@ -40,6 +41,8 @@ export default function MentorDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [mentorships, setMentorships] = useState<MentorshipRecord[]>([]);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     import("@/src/lib/firebase").then(async ({ ensureAuth }) => {
@@ -200,6 +203,12 @@ export default function MentorDashboard() {
               className="w-full flex items-center gap-2 p-2.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
             >
               <Settings className="w-4 h-4" /> Settings
+            </button>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full flex items-center gap-2 p-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors mt-2"
+            >
+              <LogOut className="w-4 h-4" /> Restart Onboarding
             </button>
           </div>
         </nav>
@@ -597,6 +606,62 @@ export default function MentorDashboard() {
               >
                 Done
               </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => !isResetting && setShowResetConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl border border-neutral-200 p-8 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-neutral-900 mb-2 flex items-center gap-2">
+                <LogOut className="w-5 h-5 text-red-500" /> Restart Onboarding?
+              </h3>
+              <p className="text-sm text-neutral-500 mb-6">
+                This will permanently delete your mentor profile and unmatch you from all mentees. You cannot undo this action.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={isResetting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setIsResetting(true);
+                    try {
+                      await resetMentorProfile();
+                      // Redirect happens via subscription listener automatically
+                    } catch (err) {
+                      console.error("Reset failed", err);
+                      showToast("Failed to reset profile. Please try again.");
+                      setIsResetting(false);
+                      setShowResetConfirm(false);
+                    }
+                  }}
+                  disabled={isResetting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 shadow-none"
+                >
+                  {isResetting ? "Resetting..." : "Yes, Reset"}
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

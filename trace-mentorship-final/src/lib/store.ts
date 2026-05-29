@@ -416,3 +416,56 @@ export async function getGeneratedRoadmap(uid: string): Promise<GeneratedRoadmap
   }
   return null;
 }
+
+export async function resetStudentProfile(): Promise<void> {
+  const { db } = requireFirebase();
+  const user = await ensureAuth();
+  if (!user || !user.uid) throw new Error("Unauthorized: User UID is missing.");
+  
+  // Verify profile exists before attempting deletion
+  const profileRef = doc(db, "users", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  if (!profileSnap.exists()) {
+    console.warn("Student profile not found, proceeding to clear mentorships anyway.");
+  }
+
+  // 1. Delete all mentorship records for this student
+  const existing = await getDocs(
+    query(collection(db, "mentorships"), where("studentId", "==", user.uid))
+  );
+  await Promise.all(existing.docs.map(snap => deleteDoc(snap.ref)));
+  
+  // 2. Delete student profile (triggers redirect to /onboarding)
+  await deleteDoc(profileRef);
+}
+
+export async function resetMentorProfile(): Promise<void> {
+  const { db } = requireFirebase();
+  const user = await ensureAuth();
+  if (!user || !user.uid) throw new Error("Unauthorized: User UID is missing.");
+  
+  // Verify mentor profile exists. Strict check on the naming convention.
+  const profileRef = doc(db, "users", `mentor_${user.uid}`);
+  const profileSnap = await getDoc(profileRef);
+  
+  // If we don't find it under mentor_uid, let's also check if it somehow got saved under just uid with role=mentor
+  let targetRef = profileRef;
+  if (!profileSnap.exists()) {
+    const fallbackRef = doc(db, "users", user.uid);
+    const fallbackSnap = await getDoc(fallbackRef);
+    if (fallbackSnap.exists() && fallbackSnap.data().role === "mentor") {
+      targetRef = fallbackRef;
+    } else {
+      console.warn("Mentor profile not found under expected IDs, proceeding to clear mentorships.");
+    }
+  }
+
+  // 1. Delete all mentorship records for this mentor
+  const existing = await getDocs(
+    query(collection(db, "mentorships"), where("mentorId", "==", user.uid))
+  );
+  await Promise.all(existing.docs.map(snap => deleteDoc(snap.ref)));
+  
+  // 2. Delete mentor profile (triggers redirect to /mentor/onboarding)
+  await deleteDoc(targetRef);
+}
