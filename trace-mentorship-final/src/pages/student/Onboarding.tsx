@@ -6,103 +6,12 @@ import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { assignMentorForDomain, createMentorship, saveStudentProfile } from "@/src/lib/store";
 
-const domains = [
-  "Web Development",
-  "AI / ML",
-  "Data Science",
-  "Cybersecurity",
-  "App Development",
-  "Systems & DevOps",
-  "Placements & DSA",
-];
-
-const domainSkills: Record<string, string[]> = {
-  "Web Development": [
-    "HTML/CSS",
-    "JavaScript",
-    "React",
-    "Node.js",
-    "Next.js",
-    "Tailwind",
-    "SQL",
-    "MongoDB",
-  ],
-  "AI / ML": [
-    "Python",
-    "TensorFlow",
-    "PyTorch",
-    "Scikit-learn",
-    "Pandas",
-    "NLP",
-    "Computer Vision",
-  ],
-  "Data Science": [
-    "Python",
-    "SQL",
-    "R",
-    "Tableau",
-    "PowerBI",
-    "Statistics",
-    "Machine Learning",
-  ],
-  Cybersecurity: [
-    "Linux",
-    "Networking",
-    "Pen Testing",
-    "Wireshark",
-    "Cryptography",
-    "Bash",
-  ],
-  "App Development": ["Flutter", "React Native", "Swift", "Kotlin", "Java", "Firebase"],
-  "Systems & DevOps": [
-    "Linux",
-    "Docker",
-    "Kubernetes",
-    "AWS",
-    "CI/CD",
-    "Go",
-    "Rust",
-  ],
-  "Placements & DSA": [
-    "DSA",
-    "LeetCode",
-    "System Design",
-    "Mock Interviews",
-    "Resume Review",
-    "Core CS",
-  ],
-};
-const defaultSkills = ["C++", "Java", "Python", "Git", "DSA", "SQL"];
-
-const skillLevels = [
-  "Beginner (Just starting out)",
-  "Intermediate (Know basics, building projects)",
-  "Advanced (Preparing for internships/placements)",
-];
-
-const availabilities = [
-  "1-3 hours/week",
-  "3-5 hours/week",
-  "5-10 hours/week",
-  "10+ hours/week",
-];
-
-const mentorStyles = [
-  "Hands-on & structured",
-  "Directional advice only",
-  "Chill & conversational",
-];
-
-const branches = [
-  "AIML",
-  "CSE",
-  "IT",
-  "ENTC",
-  "Mechanical",
-  "Civil",
-  "Electrical",
-  "Other",
-];
+import {
+  branches,
+  NOT_DECIDED_ROLE,
+  getBranchById,
+  getSkillsForRole,
+} from "@/src/data/domainMatrix";
 
 const years = [
   { value: "FY", label: "FY (1st Year)" },
@@ -122,9 +31,9 @@ export default function StudentOnboarding() {
 
   const [data, setData] = useState({
     name: "",
-    branch: "",
+    branchId: "",
     year: "",
-    domain: "",
+    role: "",
     skills: [] as string[],
     skillLevel: "",
     goals: "",
@@ -152,11 +61,29 @@ export default function StudentOnboarding() {
     setIsSubmitting(true);
     
     try {
-      await saveStudentProfile(data);
+      const branchObj = getBranchById(data.branchId);
+      const branchName = branchObj?.title || data.branchId;
+      const roleName = data.role;
+
+      const profileToSave = {
+        ...data,
+        branch: branchName,
+        domain: roleName,
+      };
+
+      await saveStudentProfile(profileToSave as any);
       
-      const mentor = assignMentorForDomain(data.domain);
+      const mentor = assignMentorForDomain(roleName);
+      
       await createMentorship(
-        { name: data.name, year: data.year, branch: data.branch, domain: data.domain, goals: data.goals || data.primaryGoal || "", skills: data.skills },
+        { 
+          name: data.name, 
+          year: data.year, 
+          branch: branchName, 
+          domain: roleName, 
+          goals: data.goals || "", 
+          skills: data.skills 
+        },
         mentor.id,
       );
 
@@ -170,10 +97,8 @@ export default function StudentOnboarding() {
     }
   };
 
-  const currentSkillsList =
-    data.domain && domainSkills[data.domain]
-      ? domainSkills[data.domain]
-      : defaultSkills;
+  const branch = getBranchById(data.branchId);
+  const currentSkillsList = branch && data.role ? getSkillsForRole(branch, data.role) : [];
 
   const totalSteps = 5;
 
@@ -197,20 +122,20 @@ export default function StudentOnboarding() {
               </p>
             </div>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-neutral-700">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={data.name}
-                  onChange={(e) => updateData({ name: e.target.value })}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-shadow"
-                  placeholder="e.g. Aarav Kulkarni"
-                />
-              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                  <label className="text-sm font-medium text-neutral-700">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={data.name}
+                    onChange={(e) => updateData({ name: e.target.value })}
+                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-shadow"
+                    placeholder="e.g. Aarav Kulkarni"
+                  />
+                </div>
+                <div className="space-y-1.5 col-span-2 sm:col-span-1">
                   <label className="text-sm font-medium text-neutral-700">Year</label>
                   <select
                     value={data.year}
@@ -225,28 +150,39 @@ export default function StudentOnboarding() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-neutral-700">
-                    Branch
-                  </label>
-                  <select
-                    value={data.branch}
-                    onChange={(e) => updateData({ branch: e.target.value })}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 bg-white transition-shadow"
-                  >
-                    <option value="" disabled>
-                      Select Branch
-                    </option>
-                    {branches.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-neutral-700">
+                  Engineering Branch
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 max-h-[40vh] overflow-y-auto pr-2">
+                  {branches.map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => {
+                        if (data.branchId !== b.id) {
+                          updateData({ branchId: b.id, role: "", skills: [] });
+                        }
+                      }}
+                      className={`p-3 text-sm text-left rounded-lg border transition-all flex flex-col gap-1 ${
+                        data.branchId === b.id
+                          ? "border-neutral-900 bg-neutral-900 text-white shadow-md"
+                          : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 shadow-sm"
+                      }`}
+                    >
+                      <div className="font-bold text-[15px]">{b.title}</div>
+                      <div className={`text-xs ${data.branchId === b.id ? "text-neutral-300" : "text-neutral-500"}`}>
+                        {b.description}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
             <Button
               onClick={handleNext}
-              disabled={!data.name.trim() || !data.year || !data.branch}
+              disabled={!data.name.trim() || !data.year || !data.branchId}
               className="w-full mt-6"
             >
               Continue
@@ -255,89 +191,124 @@ export default function StudentOnboarding() {
         );
 
       case 1:
+        const currentBranch = getBranchById(data.branchId);
+        
         return (
           <motion.div
             key="step1"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+            className="space-y-6 flex flex-col h-full"
           >
-            <div className="space-y-2">
+            <div className="space-y-2 shrink-0">
               <h2 className="text-2xl font-bold text-neutral-900">
-                What do you want to master?
+                What role are you aiming for?
               </h2>
               <p className="text-neutral-500">
-                Select your primary area of interest.
+                Select a specific role in {currentBranch?.title}, or explore generally.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {domains.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => {
-                    if (data.domain !== d) {
-                      updateData({ domain: d, skills: [] });
-                    } else {
-                      updateData({ domain: d });
-                    }
-                  }}
-                  className={`p-3 text-sm text-left rounded-lg border transition-all ${
-                    data.domain === d
-                      ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
-                      : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-                  }`}
-                >
-                  {d}
-                </button>
+            
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 max-h-[50vh]">
+              <button
+                onClick={() => updateData({ role: NOT_DECIDED_ROLE, skills: [] })}
+                className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
+                  data.role === NOT_DECIDED_ROLE
+                    ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
+                    : "border-dashed border-neutral-300 bg-neutral-50 text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100"
+                }`}
+              >
+                <div className="font-bold text-base">Not Decided / Exploring</div>
+                <div className="text-sm opacity-80 mt-1">I want to learn the general basics of this branch first.</div>
+              </button>
+
+              {currentBranch?.roleCategories.map((cat) => (
+                <div key={cat.category} className="space-y-3">
+                  <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                    {cat.category}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.roles.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => updateData({ role: r, skills: [] })}
+                        className={`px-3 py-2 text-sm text-left rounded-lg border transition-all ${
+                          data.role === r
+                            ? "border-neutral-900 bg-neutral-900 text-white shadow-sm font-medium"
+                            : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 shadow-sm"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
-            <div className="flex gap-3 pt-2">
+            
+            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
               <Button variant="outline" onClick={handleBack} className="px-3">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <Button onClick={handleNext} disabled={!data.domain} className="flex-1">
+              <Button onClick={handleNext} disabled={!data.role} className="flex-1">
                 Continue
               </Button>
             </div>
           </motion.div>
         );
 
-      case 2:
+      case 2: {
+        const isNotDecided = data.role === NOT_DECIDED_ROLE;
         return (
           <motion.div
             key="step2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+            className="space-y-6 flex flex-col h-full"
           >
-            <div className="space-y-2">
+            <div className="space-y-2 shrink-0">
               <h2 className="text-2xl font-bold text-neutral-900">
                 What's in your toolkit?
               </h2>
               <p className="text-neutral-500">
-                Select the skills you already know or are learning.
+                {isNotDecided 
+                  ? "Select any general skills you already know or are currently learning." 
+                  : `Select the skills relevant to ${data.role} you already know.`}
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {currentSkillsList.map((skill) => (
-                <button
-                  key={skill}
-                  onClick={() => toggleSkill(skill)}
-                  className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
-                    data.skills.includes(skill)
-                      ? "border-neutral-900 bg-neutral-900 text-white"
-                      : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-                  }`}
-                >
-                  {skill}
-                </button>
-              ))}
+            <div className="flex-1 overflow-y-auto pr-2 max-h-[40vh]">
+              <div className="flex flex-wrap gap-2 mb-6">
+                {currentSkillsList.map((skill) => (
+                  <button
+                    key={skill}
+                    onClick={() => toggleSkill(skill)}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                      data.skills.includes(skill)
+                        ? "border-neutral-900 bg-neutral-900 text-white"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => {
+                  updateData({ skills: [] });
+                  handleNext();
+                }}
+                className="w-full p-4 mt-2 text-left rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 transition-all"
+              >
+                <div className="font-bold text-base">None / Complete Beginner</div>
+                <div className="text-sm opacity-80 mt-1">I am starting from scratch and haven't learned these yet.</div>
+              </button>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
               <Button variant="outline" onClick={handleBack} className="px-3">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
@@ -348,6 +319,7 @@ export default function StudentOnboarding() {
             </div>
           </motion.div>
         );
+      }
 
       case 3:
         return (
