@@ -71,12 +71,7 @@ export default function RoadmapPage() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const generated = await generatePersonalizedRoadmap({
-        domain: formData.majorDomain || studentDomain || "Engineering",
-        skillLevel: formData.currentLevel || "Beginner",
-        targetRole: formData.targetRoles.join(", ") || formData.primaryGoal || "General",
-        deadline: formData.timeCommitment || "3 Months"
-      });
+      const generated = await generatePersonalizedRoadmap(formData);
       await saveGeneratedRoadmap(userId, generated);
       setRoadmapData(generated);
       setHasRoadmap(true);

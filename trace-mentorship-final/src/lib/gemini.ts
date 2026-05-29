@@ -151,10 +151,13 @@ export async function generateMentorMatchExplanation(
 }
 
 export interface WizardContext {
-  domain: string;
-  skillLevel: string;
-  targetRole: string;
-  deadline: string;
+  majorDomain: string;
+  targetRoles: string[];
+  currentSkills: string[];
+  isAbsoluteBeginner: boolean;
+  currentLevel: string;
+  primaryGoal: string;
+  timeCommitment: string;
 }
 
 export async function generatePersonalizedRoadmap(
@@ -163,10 +166,12 @@ export async function generatePersonalizedRoadmap(
   const ai = getGeminiClient();
   const prompt = `You are an expert tech and non-tech career mentor.
 Create a personalized learning roadmap for an engineering student.
-Domain: ${context.domain} (Can be tech like CS, AI, or non-tech like Mechanical, Civil, Electrical, etc.)
-Current Skill Level: ${context.skillLevel}
-Target Role/Goal: ${context.targetRole}
-Deadline / Commitment: ${context.deadline}
+Major Domain: ${context.majorDomain} (Can be tech like CS, AI, or non-tech like Mechanical, Civil, Electrical, etc.)
+Current Skill Level: ${context.currentLevel}
+Target Roles: ${context.targetRoles.join(", ")}
+Current Skills: ${context.isAbsoluteBeginner ? "Absolute Beginner (No prior skills)" : context.currentSkills.join(", ")}
+Primary Goal: ${context.primaryGoal}
+Weekly Time Commitment: ${context.timeCommitment}
 
 Return a STRICT JSON object matching this schema exactly. Do NOT use markdown code blocks.
 Include 4-8 milestones split between "short-term" and "long-term" phases.
@@ -254,8 +259,8 @@ Schema:
     // Fallback Mock Data so the demo doesn't crash on invalid API key
     return {
       generatedAt: new Date().toISOString(),
-      domain: context.domain,
-      targetRole: context.targetRole,
+      domain: context.majorDomain,
+      targetRole: context.targetRoles.join(", "),
       totalWeeks: 12,
       honestAdvice: "This is a fallback generated roadmap because the Gemini API key was invalid. To get real AI generation, please configure a valid VITE_GEMINI_API_KEY.",
       mentorNote: "Discuss this with your mentor before starting.",
