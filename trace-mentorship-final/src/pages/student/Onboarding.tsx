@@ -2,15 +2,20 @@ import { useState, useEffect } from "react";
 import { ensureAuth } from "@/src/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Sparkles, Star, Clock, Users } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
-import { assignMentorForDomain, createMentorship, saveStudentProfile } from "@/src/lib/store";
+import { createMentorship, saveStudentProfile } from "@/src/lib/store";
+import { getRankedMentorsForBranch, type MentorProfile } from "@/src/data/mentors";
 
 import {
   branches,
   NOT_DECIDED_ROLE,
   getBranchById,
   getSkillsForRole,
+  timelineOptions,
+  shortTermGoals,
+  weeklyCommitmentOptions,
+  currentLevelOptions,
 } from "@/src/data/domainMatrix";
 
 const years = [
@@ -24,6 +29,7 @@ export default function StudentOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedMentorId, setSelectedMentorId] = useState("");
   
   useEffect(() => {
     ensureAuth().catch(() => navigate("/login"));
@@ -36,10 +42,11 @@ export default function StudentOnboarding() {
     role: "",
     skills: [] as string[],
     skillLevel: "",
-    goals: "",
+    goals: [] as string[],
+    customGoal: "",
     helpNeeded: "",
+    timeline: "",
     availability: "",
-    mentorStyle: "",
   });
 
   const updateData = (fields: Partial<typeof data>) =>
@@ -54,26 +61,36 @@ export default function StudentOnboarding() {
     }));
   };
 
+  const toggleGoal = (goal: string) => {
+    setData((prev) => ({
+      ...prev,
+      goals: prev.goals.includes(goal)
+        ? prev.goals.filter((g) => g !== goal)
+        : [...prev.goals, goal],
+    }));
+  };
+
   const handleNext = () => setStep((s) => s + 1);
   const handleBack = () => setStep((s) => s - 1);
 
   const handleSubmit = async () => {
+    if (!selectedMentorId) return;
     setIsSubmitting(true);
     
     try {
       const branchObj = getBranchById(data.branchId);
       const branchName = branchObj?.title || data.branchId;
       const roleName = data.role;
+      const finalGoals = [...data.goals, data.customGoal].filter(Boolean).join(" | ");
 
       const profileToSave = {
         ...data,
+        goals: finalGoals,
         branch: branchName,
         domain: roleName,
       };
 
       await saveStudentProfile(profileToSave as any);
-      
-      const mentor = assignMentorForDomain(roleName);
       
       await createMentorship(
         { 
@@ -81,10 +98,10 @@ export default function StudentOnboarding() {
           year: data.year, 
           branch: branchName, 
           domain: roleName, 
-          goals: data.goals || "", 
+          goals: finalGoals, 
           skills: data.skills 
         },
-        mentor.id,
+        selectedMentorId,
       );
 
       setTimeout(() => {
@@ -99,8 +116,11 @@ export default function StudentOnboarding() {
 
   const branch = getBranchById(data.branchId);
   const currentSkillsList = branch && data.role ? getSkillsForRole(branch, data.role) : [];
+  const rankedMentors: MentorProfile[] = data.branchId
+    ? getRankedMentorsForBranch(data.branchId, data.role, data.skills)
+    : [];
 
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   const stepContent = () => {
     switch (step) {
@@ -328,75 +348,72 @@ export default function StudentOnboarding() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+            className="space-y-6 flex flex-col h-full"
           >
-            <div className="space-y-2">
+            <div className="space-y-2 shrink-0">
               <h2 className="text-2xl font-bold text-neutral-900">
-                Where are you headed?
+                What is your timeline?
               </h2>
               <p className="text-neutral-500">
-                Tell us about your current status and goals.
+                This will be used to generate your personalized learning roadmap.
               </p>
             </div>
 
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  Current Skill Level
+            <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh] space-y-6">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-neutral-700">
+                  Target Timeline
                 </label>
-                <div className="space-y-2">
-                  {skillLevels.map((lvl) => (
+                <div className="grid grid-cols-1 gap-2">
+                  {timelineOptions.map((opt) => (
                     <label
-                      key={lvl}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.skillLevel === lvl ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
+                      key={opt.value}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.timeline === opt.value ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
                     >
                       <input
                         type="radio"
-                        name="skillLevel"
-                        checked={data.skillLevel === lvl}
-                        onChange={() => updateData({ skillLevel: lvl })}
+                        name="timeline"
+                        checked={data.timeline === opt.value}
+                        onChange={() => updateData({ timeline: opt.value })}
                         className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
                       />
-                      <span className="text-sm text-neutral-800">{lvl}</span>
+                      <span className="text-sm text-neutral-800 font-medium">{opt.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-neutral-700">
-                  What is your primary goal right now?
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-neutral-700">
+                  Weekly Time Commitment
                 </label>
-                <textarea
-                  rows={2}
-                  value={data.goals}
-                  onChange={(e) => updateData({ goals: e.target.value })}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 resize-none transition-shadow"
-                  placeholder="e.g. Crack a summer internship, build my first MERN stack project, prepare for placements..."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-neutral-700">
-                  What specific help do you need?
-                </label>
-                <textarea
-                  rows={2}
-                  value={data.helpNeeded}
-                  onChange={(e) => updateData({ helpNeeded: e.target.value })}
-                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 resize-none transition-shadow"
-                  placeholder="e.g. Need someone to review my code and help me with mock interviews."
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  {weeklyCommitmentOptions.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-center justify-center p-3 text-sm rounded-lg border cursor-pointer transition-colors ${data.availability === opt.value ? "border-neutral-900 bg-neutral-900 text-white font-medium" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="availability"
+                        checked={data.availability === opt.value}
+                        onChange={() => updateData({ availability: opt.value })}
+                        className="sr-only"
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
               <Button variant="outline" onClick={handleBack} className="px-3">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={!data.skillLevel || !data.goals.trim()}
+                disabled={!data.timeline || !data.availability}
                 className="flex-1"
               >
                 Continue
@@ -412,92 +429,211 @@ export default function StudentOnboarding() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+            className="space-y-6 flex flex-col h-full"
           >
-            <div className="space-y-2">
+            <div className="space-y-2 shrink-0">
               <h2 className="text-2xl font-bold text-neutral-900">
-                How do you learn best?
+                Set your goals
               </h2>
               <p className="text-neutral-500">
-                So we can match you with someone who fits your style.
+                Where are you currently, and what do you want to achieve?
               </p>
             </div>
 
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  Weekly Availability
+            <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh] space-y-6">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-neutral-700">
+                  Current Level
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {availabilities.map((av) => (
+                <div className="grid grid-cols-1 gap-2">
+                  {currentLevelOptions.map((lvl) => (
                     <label
-                      key={av}
-                      className={`flex items-center justify-center p-3 text-sm rounded-lg border cursor-pointer transition-colors ${data.availability === av ? "border-neutral-900 bg-neutral-50 font-medium" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
+                      key={lvl.value}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.skillLevel === lvl.value ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
                     >
                       <input
                         type="radio"
-                        name="availability"
-                        checked={data.availability === av}
-                        onChange={() => updateData({ availability: av })}
-                        className="sr-only"
+                        name="skillLevel"
+                        checked={data.skillLevel === lvl.value}
+                        onChange={() => updateData({ skillLevel: lvl.value })}
+                        className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
                       />
-                      <span>{av}</span>
+                      <span className="text-sm text-neutral-800 font-medium">{lvl.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  Preferred Mentorship Style
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-neutral-700">
+                  Short-Term Goals (Select all that apply)
                 </label>
-                <div className="space-y-2">
-                  {mentorStyles.map((style) => (
-                    <label
-                      key={style}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.mentorStyle === style ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
+                <div className="flex flex-wrap gap-2">
+                  {shortTermGoals.map((goal) => (
+                    <button
+                      key={goal}
+                      onClick={() => toggleGoal(goal)}
+                      className={`px-3 py-2 text-xs sm:text-sm text-left rounded-lg border transition-all ${
+                        data.goals.includes(goal)
+                          ? "border-neutral-900 bg-neutral-900 text-white shadow-sm font-medium"
+                          : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 shadow-sm"
+                      }`}
                     >
-                      <input
-                        type="radio"
-                        name="mentorStyle"
-                        checked={data.mentorStyle === style}
-                        onChange={() => updateData({ mentorStyle: style })}
-                        className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
-                      />
-                      <span className="text-sm text-neutral-800">{style}</span>
-                    </label>
+                      {goal}
+                    </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-neutral-700">
+                  Other / Custom Goal (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={data.customGoal}
+                  onChange={(e) => updateData({ customGoal: e.target.value })}
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-shadow"
+                  placeholder="Type any other specific goal..."
+                />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
+              <Button variant="outline" onClick={handleBack} className="px-3" disabled={isSubmitting}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
               <Button
-                variant="outline"
-                onClick={handleBack}
-                className="px-3"
-                disabled={isSubmitting}
+                onClick={handleNext}
+                disabled={!data.skillLevel || (data.goals.length === 0 && !data.customGoal.trim())}
+                className="flex-1"
               >
+                See Matching Mentors
+              </Button>
+            </div>
+          </motion.div>
+        );
+
+      case 5: {
+        const availabilityLabel: Record<string, string> = {
+          available: "Available",
+          limited: "Limited Slots",
+          busy: "Busy",
+        };
+        const availabilityColor: Record<string, string> = {
+          available: "text-green-600 bg-green-50",
+          limited: "text-yellow-600 bg-yellow-50",
+          busy: "text-red-600 bg-red-50",
+        };
+        return (
+          <motion.div
+            key="step5"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4 flex flex-col h-full"
+          >
+            <div className="space-y-1 shrink-0">
+              <h2 className="text-2xl font-bold text-neutral-900">Choose your mentor</h2>
+              <p className="text-neutral-500 text-sm">
+                Showing seniors closest to your selected branch and role. Pick one to send a request.
+              </p>
+            </div>
+
+            {rankedMentors.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-neutral-400 text-sm text-center">
+                  No mentors found for your branch yet. Please contact the coordinator.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[52vh]">
+                {rankedMentors.map((mentor) => (
+                  <button
+                    key={mentor.id}
+                    onClick={() => setSelectedMentorId(mentor.id)}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedMentorId === mentor.id
+                        ? "border-neutral-900 bg-neutral-900 text-white shadow-lg"
+                        : "border-neutral-200 bg-white hover:border-neutral-400 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={mentor.avatar}
+                        alt={mentor.name}
+                        className="w-11 h-11 rounded-full shrink-0 bg-neutral-100"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className={`font-bold text-[15px] ${selectedMentorId === mentor.id ? "text-white" : "text-neutral-900"}`}>
+                            {mentor.name}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            selectedMentorId === mentor.id
+                              ? "bg-white/20 text-white"
+                              : availabilityColor[mentor.availability] || "bg-neutral-100 text-neutral-600"
+                          }`}>
+                            {availabilityLabel[mentor.availability] || mentor.availability}
+                          </span>
+                        </div>
+                        <div className={`text-xs mt-0.5 ${selectedMentorId === mentor.id ? "text-neutral-300" : "text-neutral-500"}`}>
+                          {mentor.title}
+                        </div>
+                        <p className={`text-xs mt-1.5 line-clamp-2 ${selectedMentorId === mentor.id ? "text-neutral-200" : "text-neutral-600"}`}>
+                          {mentor.bio}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <span className={`flex items-center gap-1 text-xs ${selectedMentorId === mentor.id ? "text-neutral-300" : "text-neutral-500"}`}>
+                            <Star className="w-3 h-3" />{mentor.rating}
+                          </span>
+                          <span className={`flex items-center gap-1 text-xs ${selectedMentorId === mentor.id ? "text-neutral-300" : "text-neutral-500"}`}>
+                            <Clock className="w-3 h-3" />{mentor.responseTime}
+                          </span>
+                          <span className={`flex items-center gap-1 text-xs ${selectedMentorId === mentor.id ? "text-neutral-300" : "text-neutral-500"}`}>
+                            <Users className="w-3 h-3" />{mentor.stats.totalMentored} mentored
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {mentor.expertise.slice(0, 4).map((skill) => (
+                            <span
+                              key={skill}
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                selectedMentorId === mentor.id
+                                  ? "bg-white/15 text-neutral-200"
+                                  : "bg-neutral-100 text-neutral-600"
+                              }`}
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
+              <Button variant="outline" onClick={handleBack} className="px-3" disabled={isSubmitting}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!data.availability || !data.mentorStyle || isSubmitting}
+                disabled={!selectedMentorId || isSubmitting}
                 className="flex-1"
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching...
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending Request...</>
                 ) : (
-                  <>
-                    <Check className="w-4 h-4 mr-2" /> Find My Mentor
-                  </>
+                  <><Check className="w-4 h-4 mr-2" /> Send Mentor Request</>
                 )}
               </Button>
             </div>
           </motion.div>
         );
+      }
 
       default:
         return null;
@@ -519,11 +655,10 @@ export default function StudentOnboarding() {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold text-neutral-900">
-              Analyzing your profile
+              Sending your request
             </h2>
             <p className="text-neutral-500 text-sm">
-              Finding the perfect senior mentor for your goals in{" "}
-              {data.domain || "Engineering"}...
+              Your mentor request is being sent. Please wait...
             </p>
           </div>
         </motion.div>
