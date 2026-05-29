@@ -151,27 +151,41 @@ export async function generateMentorMatchExplanation(
 }
 
 export interface WizardContext {
-  majorDomain: string;
-  targetRoles: string[];
-  currentSkills: string[];
-  isAbsoluteBeginner: boolean;
-  currentLevel: string;
-  primaryGoal: string;
-  timeCommitment: string;
+  majorDomain?: string;
+  targetRoles?: string[];
+  currentSkills?: string[];
+  isAbsoluteBeginner?: boolean;
+  currentLevel?: string;
+  primaryGoal?: string;
+  timeCommitment?: string;
 }
 
 export async function generatePersonalizedRoadmap(
   context: WizardContext
 ): Promise<any> {
   const ai = getGeminiClient();
+
+  // Robust default/fallback values to protect against formData incompleteness
+  const majorDomain = context.majorDomain || "Software & AI";
+  const currentLevel = context.currentLevel || "Beginner";
+  const rolesList = (context.targetRoles && context.targetRoles.length > 0)
+    ? context.targetRoles
+    : ["General Professional"];
+  const isBeginner = context.isAbsoluteBeginner ?? false;
+  const skillsList = (context.currentSkills && context.currentSkills.length > 0)
+    ? context.currentSkills
+    : (isBeginner ? ["None / Absolute Beginner"] : ["Basic Knowledge"]);
+  const goal = context.primaryGoal || "General Upskilling";
+  const time = context.timeCommitment || "3-5 hrs";
+
   const prompt = `You are an expert tech and non-tech career mentor.
 Create a personalized learning roadmap for an engineering student.
-Major Domain: ${context.majorDomain} (Can be tech like CS, AI, or non-tech like Mechanical, Civil, Electrical, etc.)
-Current Skill Level: ${context.currentLevel}
-Target Roles: ${context.targetRoles.join(", ")}
-Current Skills: ${context.isAbsoluteBeginner ? "Absolute Beginner (No prior skills)" : context.currentSkills.join(", ")}
-Primary Goal: ${context.primaryGoal}
-Weekly Time Commitment: ${context.timeCommitment}
+Major Domain: ${majorDomain} (Can be tech like CS, AI, or non-tech like Mechanical, Civil, Electrical, etc.)
+Current Skill Level: ${currentLevel}
+Target Roles: ${rolesList.join(", ")}
+Current Skills: ${isBeginner ? "Absolute Beginner (No prior skills)" : skillsList.join(", ")}
+Primary Goal: ${goal}
+Weekly Time Commitment: ${time}
 
 Return a STRICT JSON object matching this schema exactly. Do NOT use markdown code blocks.
 Include 4-8 milestones split between "short-term" and "long-term" phases.
@@ -259,8 +273,8 @@ Schema:
     // Fallback Mock Data so the demo doesn't crash on invalid API key
     return {
       generatedAt: new Date().toISOString(),
-      domain: context.majorDomain,
-      targetRole: context.targetRoles.join(", "),
+      domain: majorDomain,
+      targetRole: rolesList.join(", "),
       totalWeeks: 12,
       honestAdvice: "This is a fallback generated roadmap because the Gemini API key was invalid. To get real AI generation, please configure a valid VITE_GEMINI_API_KEY.",
       mentorNote: "Discuss this with your mentor before starting.",
