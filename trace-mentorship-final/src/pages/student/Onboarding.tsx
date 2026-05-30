@@ -13,10 +13,7 @@ import {
   NOT_DECIDED_ROLE,
   getBranchById,
   getSkillsForRole,
-  timelineOptions,
   shortTermGoals,
-  weeklyCommitmentOptions,
-  currentLevelOptions,
 } from "@/src/data/domainMatrix";
 
 const years = [
@@ -43,12 +40,9 @@ export default function StudentOnboarding() {
     year: "",
     role: "",
     skills: [] as string[],
-    skillLevel: "",
     goals: [] as string[],
     customGoal: "",
     helpNeeded: "",
-    timeline: "",
-    availability: "",
   });
 
   const updateData = (fields: Partial<typeof data>) =>
@@ -122,7 +116,7 @@ export default function StudentOnboarding() {
     ? getRankedMentorsForBranch(data.branchId, data.role, data.skills, allMentorsPool)
     : [];
 
-  const totalSteps = 6;
+  const totalSteps = 5;
 
   const stepContent = () => {
     switch (step) {
@@ -354,118 +348,14 @@ export default function StudentOnboarding() {
           >
             <div className="space-y-2 shrink-0">
               <h2 className="text-2xl font-bold text-neutral-900">
-                What is your timeline?
-              </h2>
-              <p className="text-neutral-500">
-                This will be used to generate your personalized learning roadmap.
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh] space-y-6">
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-neutral-700">
-                  Target Timeline
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {timelineOptions.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.timeline === opt.value ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="timeline"
-                        checked={data.timeline === opt.value}
-                        onChange={() => updateData({ timeline: opt.value })}
-                        className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
-                      />
-                      <span className="text-sm text-neutral-800 font-medium">{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-neutral-700">
-                  Weekly Time Commitment
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {weeklyCommitmentOptions.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-center justify-center p-3 text-sm rounded-lg border cursor-pointer transition-colors ${data.availability === opt.value ? "border-neutral-900 bg-neutral-900 text-white font-medium" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="availability"
-                        checked={data.availability === opt.value}
-                        onChange={() => updateData({ availability: opt.value })}
-                        className="sr-only"
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-4 border-t border-neutral-100 shrink-0">
-              <Button variant="outline" onClick={handleBack} className="px-3">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={!data.timeline || !data.availability}
-                className="flex-1"
-              >
-                Continue
-              </Button>
-            </div>
-          </motion.div>
-        );
-
-      case 4:
-        return (
-          <motion.div
-            key="step4"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6 flex flex-col h-full"
-          >
-            <div className="space-y-2 shrink-0">
-              <h2 className="text-2xl font-bold text-neutral-900">
                 Set your goals
               </h2>
               <p className="text-neutral-500">
-                Where are you currently, and what do you want to achieve?
+                What do you want to achieve?
               </p>
             </div>
 
             <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh] space-y-6">
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-neutral-700">
-                  Current Level
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {currentLevelOptions.map((lvl) => (
-                    <label
-                      key={lvl.value}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${data.skillLevel === lvl.value ? "border-neutral-900 bg-neutral-50" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="skillLevel"
-                        checked={data.skillLevel === lvl.value}
-                        onChange={() => updateData({ skillLevel: lvl.value })}
-                        className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
-                      />
-                      <span className="text-sm text-neutral-800 font-medium">{lvl.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
               <div className="space-y-3">
                 <label className="text-sm font-bold text-neutral-700">
                   Short-Term Goals (Select all that apply)
@@ -507,7 +397,7 @@ export default function StudentOnboarding() {
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={!data.skillLevel || (data.goals.length === 0 && !data.customGoal.trim())}
+                disabled={data.goals.length === 0 && !data.customGoal.trim()}
                 className="flex-1"
               >
                 See Matching Mentors
@@ -516,7 +406,7 @@ export default function StudentOnboarding() {
           </motion.div>
         );
 
-      case 5: {
+      case 4: {
         const availabilityLabel: Record<string, string> = {
           available: "Available",
           limited: "Limited Slots",
@@ -529,7 +419,7 @@ export default function StudentOnboarding() {
         };
         return (
           <motion.div
-            key="step5"
+            key="step4"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}

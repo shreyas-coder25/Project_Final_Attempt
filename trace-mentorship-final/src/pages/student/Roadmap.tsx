@@ -2,22 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ensureAuth } from "@/src/lib/firebase";
-import { getStudentProfile, getGeneratedRoadmap, saveGeneratedRoadmap, type GeneratedRoadmap } from "@/src/lib/store";
+import { getStudentProfile, getGeneratedRoadmap, saveGeneratedRoadmap, addChatMessage, type GeneratedRoadmap, type StudentProfile } from "@/src/lib/store";
 import { generatePersonalizedRoadmap } from "@/src/lib/gemini";
 import RoadmapView from "@/src/components/RoadmapView";
-import { domainMatrix } from "@/src/data/domainMatrix";
-import { ArrowLeft, Sparkles, Target, Clock, Zap, ChevronRight, CheckCircle2, Loader2, Code, Settings, PenTool, Briefcase } from "lucide-react";
-
-// Helper for icons
-const getDomainIcon = (title: string) => {
-  switch (title) {
-    case "Software & AI": return <Code className="w-8 h-8 text-indigo-500 mb-4" />;
-    case "Core Engineering": return <Settings className="w-8 h-8 text-orange-500 mb-4" />;
-    case "Design & Product": return <PenTool className="w-8 h-8 text-pink-500 mb-4" />;
-    case "Business & Management": return <Briefcase className="w-8 h-8 text-emerald-500 mb-4" />;
-    default: return <Sparkles className="w-8 h-8 text-indigo-500 mb-4" />;
-  }
-};
+import { branches } from "@/src/data/domainMatrix";
+import { ArrowLeft, Sparkles, Target, Clock, Zap, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 
 export default function RoadmapPage() {
@@ -25,7 +14,7 @@ export default function RoadmapPage() {
   const [loading, setLoading] = useState(true);
   const [hasRoadmap, setHasRoadmap] = useState(false);
   const [roadmapData, setRoadmapData] = useState<GeneratedRoadmap | null>(null);
-  const [studentDomain, setStudentDomain] = useState("");
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [userId, setUserId] = useState("");
 
   // Wizard State
@@ -33,14 +22,15 @@ export default function RoadmapPage() {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
-    majorDomain: "",
-    targetRoles: [] as string[],
-    currentSkills: [] as string[],
-    isAbsoluteBeginner: false,
+    topic: "",
+    timeline: "3", // default 3 months
     currentLevel: "",
-    primaryGoal: "",
-    timeCommitment: ""
+    hoursPerWeek: 5
   });
+  
+  // For sending to mentor
+  const [isSendingToMentor, setIsSendingToMentor] = useState(false);
+  const [sentToMentor, setSentToMentor] = useState(false);
 
   const updateFormData = (updates: Partial<typeof formData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -55,7 +45,7 @@ export default function RoadmapPage() {
           getGeneratedRoadmap(user.uid)
         ]);
         if (profile) {
-          setStudentDomain(profile.domain);
+          setStudentProfile(profile);
         }
         if (roadmap) {
           setRoadmapData(roadmap);
@@ -71,7 +61,16 @@ export default function RoadmapPage() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const generated = await generatePersonalizedRoadmap(formData);
+      const generated = await generatePersonalizedRoadmap({
+        topic: formData.topic,
+        timeline: formData.timeline,
+        currentLevel: formData.currentLevel,
+        hoursPerWeek: formData.hoursPerWeek,
+        studentBranch: studentProfile?.branch,
+        studentRole: studentProfile?.domain,
+        studentSkills: studentProfile?.skills,
+        studentGoals: studentProfile?.goals
+      });
       await saveGeneratedRoadmap(userId, generated);
       setRoadmapData(generated);
       setHasRoadmap(true);
@@ -86,159 +85,172 @@ export default function RoadmapPage() {
 
   const handleUpdateMilestone = async (id: string, status: "upcoming" | "active" | "done") => {
     if (!roadmapData) return;
-    const updated = {
+    
+    // For legacy flat milestones
+    let newMilestones = roadmapData.milestones;
+    if (newMilestones) {
+      newMilestones = newMilestones.map(m => m.id === id ? { ...m, status } : m);
+    }
+
+    // For new phase-based milestones
+    let newPhases = roadmapData.phases;
+    if (newPhases) {
+      newPhases = newPhases.map(p => ({
+        ...p,
+        milestones: p.milestones.map(m => m.id === id ? { ...m, status } : m)
+      }));
+    }
+
+    const updated: GeneratedRoadmap = {
       ...roadmapData,
-      milestones: roadmapData.milestones.map(m => m.id === id ? { ...m, status } : m)
+      milestones: newMilestones,
+      phases: newPhases
     };
+    
     setRoadmapData(updated);
     await saveGeneratedRoadmap(userId, updated);
+  };
+  
+  // Implemented for Task 12
+  const handleSendToMentor = async () => {
+    if (!userId) return;
+    setIsSendingToMentor(true);
+    try {
+      // Find active mentorship
+      const { getDocs, collection, query, where } = await import("firebase/firestore");
+      const { requireFirebase } = await import("@/src/lib/firebase");
+      const { db: firestore } = requireFirebase();
+      
+      const snap = await getDocs(query(collection(firestore, "mentorships"), where("studentId", "==", userId)));
+      const active = snap.docs.filter(d => d.data().status !== "archived");
+      
+      if (active.length > 0) {
+        await Promise.all(
+          active.map(m => 
+            addChatMessage(m.id, "student", "🗺️ I've generated my AI learning roadmap! Check it out.")
+          )
+        );
+        setSentToMentor(true);
+      } else {
+        alert("No active mentor found.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send message to mentor.");
+    } finally {
+      setIsSendingToMentor(false);
+    }
+  };
+
+  // Helper for slider labels
+  const getTimelineLabel = (months: number) => {
+    if (months === 1) return "1 month";
+    if (months < 12) return `${months} months`;
+    if (months === 12) return "1 year";
+    if (months === 18) return "1.5 years";
+    if (months === 24) return "2 years";
+    if (months === 36) return "3 years";
+    if (months === 48) return "4 years";
+    return `${months} months`;
   };
 
   const renderWizardStep = () => {
     switch (step) {
-      case 1:
+      case 1: {
+        let suggestions = ["DSA", "Web Development", "Machine Learning", "DevOps", "GATE Prep", "Android Dev"];
+        if (studentProfile?.branch) {
+          const branchObj = branches.find(b => b.title === studentProfile.branch);
+          if (branchObj) {
+            suggestions = branchObj.roleCategories.flatMap(c => c.roles).slice(0, 8);
+          }
+        }
+        
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-indigo-500" /> Choose your primary path
+              <Target className="w-5 h-5 text-indigo-500" /> What do you want to learn?
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Object.values(domainMatrix).map((domain) => (
-                <button
-                  key={domain.title}
-                  onClick={() => {
-                    updateFormData({ 
-                      majorDomain: domain.title, 
-                      targetRoles: [], 
-                      currentSkills: [], 
-                      isAbsoluteBeginner: false 
-                    });
-                  }}
-                  className={`p-6 rounded-2xl border-2 text-left transition-all ${
-                    formData.majorDomain === domain.title
-                      ? "border-indigo-600 bg-indigo-50/50 shadow-md ring-1 ring-indigo-100"
-                      : "border-neutral-200 bg-white hover:border-indigo-200 hover:bg-neutral-50 shadow-sm"
-                  }`}
-                >
-                  {getDomainIcon(domain.title)}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-bold text-neutral-900 text-lg mb-1">{domain.title}</h4>
-                      <p className="text-sm text-neutral-500 leading-relaxed">{domain.description}</p>
-                    </div>
-                    {formData.majorDomain === domain.title && <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0 ml-2" />}
-                  </div>
-                </button>
-              ))}
+            
+            <div className="space-y-6">
+              <div>
+                <input
+                  type="text"
+                  placeholder="e.g. Full Stack Web Development"
+                  value={formData.topic}
+                  onChange={(e) => updateFormData({ topic: e.target.value })}
+                  className="w-full p-4 text-lg rounded-xl border-2 border-neutral-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all shadow-sm"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <p className="text-sm font-semibold text-neutral-500 mb-3">Suggestions for {studentProfile?.branch || "you"}:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => updateFormData({ topic: s })}
+                      className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors border border-neutral-200 bg-white text-neutral-700 hover:border-indigo-300 hover:bg-indigo-50"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+            
             <div className="mt-8 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!formData.majorDomain} className="gap-2">
+              <Button onClick={() => setStep(2)} disabled={!formData.topic.trim()} className="gap-2 bg-neutral-900 hover:bg-neutral-800 text-white">
                 Next <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </motion.div>
         );
+      }
       case 2: {
-        const domainData = domainMatrix[formData.majorDomain];
-        if (!domainData) return null;
-        
+        // We need a slider that maps to 1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48
+        const timelineValues = [1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48];
+        const currentIndex = timelineValues.indexOf(Number(formData.timeline)) !== -1 
+          ? timelineValues.indexOf(Number(formData.timeline)) 
+          : 2; // default to index 2 (3 months)
+          
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
-              <Target className="w-5 h-5 text-indigo-500" /> What are your target roles and skills?
+              <Clock className="w-5 h-5 text-indigo-500" /> How much time do you have?
             </h3>
             
-            <div className="space-y-8">
-              {/* Target Roles */}
-              <div>
-                <label className="text-sm font-semibold text-neutral-700 block mb-3">
-                  Target Roles (Select one or more)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {domainData.roles.map((role) => {
-                    const isSelected = formData.targetRoles.includes(role);
-                    return (
-                      <button
-                        key={role}
-                        onClick={() => {
-                          const newRoles = isSelected 
-                            ? formData.targetRoles.filter(r => r !== role)
-                            : [...formData.targetRoles, role];
-                          updateFormData({ targetRoles: newRoles });
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
-                          isSelected 
-                            ? "bg-indigo-600 border-indigo-600 text-white shadow-sm" 
-                            : "bg-white border-neutral-200 text-neutral-700 hover:border-indigo-300 hover:bg-indigo-50"
-                        }`}
-                      >
-                        {role}
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="space-y-12 py-8 px-4">
+              <div className="text-center mb-8">
+                <span className="text-4xl font-bold text-indigo-600">{getTimelineLabel(Number(formData.timeline))}</span>
+                <p className="text-neutral-500 mt-2">Target completion timeline</p>
               </div>
-
-              {/* Current Skills */}
-              <div className="pt-6 border-t border-neutral-100">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-semibold text-neutral-700 block">
-                    Current Skills
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-bold text-amber-700 cursor-pointer bg-amber-50 px-2 py-1 rounded border border-amber-200 hover:bg-amber-100 transition-colors">
-                    <input 
-                      type="checkbox" 
-                      className="accent-amber-600 w-3.5 h-3.5 cursor-pointer"
-                      checked={formData.isAbsoluteBeginner}
-                      onChange={(e) => {
-                        const isBeginner = e.target.checked;
-                        updateFormData({ 
-                          isAbsoluteBeginner: isBeginner,
-                          currentSkills: isBeginner ? [] : formData.currentSkills
-                        });
-                      }}
-                    />
-                    None / Absolute Beginner
-                  </label>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {domainData.skills.map((skill) => {
-                    const isSelected = formData.currentSkills.includes(skill);
-                    const disabled = formData.isAbsoluteBeginner;
-                    return (
-                      <button
-                        key={skill}
-                        disabled={disabled}
-                        onClick={() => {
-                          const newSkills = isSelected
-                            ? formData.currentSkills.filter(s => s !== skill)
-                            : [...formData.currentSkills, skill];
-                          updateFormData({ currentSkills: newSkills });
-                        }}
-                        className={`px-3 py-1.5 rounded border text-sm font-medium transition-colors ${
-                          disabled 
-                            ? "opacity-50 cursor-not-allowed bg-neutral-50 border-neutral-200 text-neutral-400"
-                            : isSelected
-                              ? "bg-neutral-900 border-neutral-900 text-white shadow-sm"
-                              : "bg-white border-neutral-200 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    );
-                  })}
+              
+              <div className="relative">
+                <input
+                  type="range"
+                  min="0"
+                  max={timelineValues.length - 1}
+                  value={currentIndex}
+                  onChange={(e) => {
+                    const idx = Number(e.target.value);
+                    updateFormData({ timeline: timelineValues[idx].toString() });
+                  }}
+                  className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+                <div className="flex justify-between text-xs font-medium text-neutral-400 mt-3 px-1">
+                  <span>1m</span>
+                  <span>6m</span>
+                  <span>1y</span>
+                  <span>2y</span>
+                  <span>4y</span>
                 </div>
               </div>
             </div>
-
+            
             <div className="mt-8 flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button 
-                onClick={() => setStep(3)} 
-                disabled={formData.targetRoles.length === 0 || (!formData.isAbsoluteBeginner && formData.currentSkills.length === 0)} 
-                className="gap-2"
-              >
+              <Button onClick={() => setStep(3)} className="gap-2 bg-neutral-900 hover:bg-neutral-800 text-white">
                 Next <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -249,87 +261,78 @@ export default function RoadmapPage() {
         return (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-500" /> Final details
+              <Zap className="w-5 h-5 text-indigo-500" /> Where are you right now?
             </h3>
             
-            <div className="space-y-6">
-              {/* Current Level */}
-              <div>
-                <label className="text-sm font-semibold text-neutral-700 block mb-2">Current Level</label>
-                <div className="flex gap-3">
-                  {["Beginner", "Intermediate"].map((level) => (
-                    <button
-                      key={level}
-                      onClick={() => updateFormData({ currentLevel: level })}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        formData.currentLevel === level
-                          ? "bg-indigo-50 border-indigo-600 text-indigo-700"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:border-indigo-300"
-                      }`}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-4">
+              {[
+                { id: "beginner", title: "Beginner", desc: "Starting from zero, no prior knowledge" },
+                { id: "intermediate", title: "Intermediate", desc: "Know the basics, ready for projects" },
+                { id: "advanced", title: "Advanced", desc: "Experienced, looking for mastery" }
+              ].map(level => (
+                <button
+                  key={level.id}
+                  onClick={() => updateFormData({ currentLevel: level.id })}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    formData.currentLevel === level.id
+                      ? "border-indigo-600 bg-indigo-50 shadow-sm ring-1 ring-indigo-100"
+                      : "border-neutral-200 bg-white hover:border-indigo-200 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="font-bold text-neutral-900 text-lg">{level.title}</div>
+                  <div className="text-sm text-neutral-500 mt-1">{level.desc}</div>
+                </button>
+              ))}
+            </div>
+            
+            <div className="mt-8 flex justify-between">
+              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+              <Button onClick={() => setStep(4)} disabled={!formData.currentLevel} className="gap-2 bg-neutral-900 hover:bg-neutral-800 text-white">
+                Next <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </motion.div>
+        );
+      case 4:
+        return (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <h3 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-500" /> Final details
+            </h3>
+            
+            <div className="space-y-12 py-8 px-4">
+              <div className="text-center mb-8">
+                <span className="text-4xl font-bold text-indigo-600">{formData.hoursPerWeek}</span>
+                <span className="text-xl font-medium text-neutral-500 ml-2">hours / week</span>
+                <p className="text-neutral-500 mt-2">How much time can you commit?</p>
               </div>
-
-              {/* Primary Goal */}
-              <div>
-                <label className="text-sm font-semibold text-neutral-700 block mb-2">Primary Goal</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {["Internship", "Build a Project", "General Upskilling"].map((goal) => (
-                    <button
-                      key={goal}
-                      onClick={() => updateFormData({ primaryGoal: goal })}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
-                        formData.primaryGoal === goal
-                          ? "bg-neutral-900 border-neutral-900 text-white"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                      }`}
-                    >
-                      {goal}
-                    </button>
-                  ))}
-                </div>
+              
+              <div className="relative">
                 <input
-                  type="text"
-                  placeholder="Or specify another goal..."
-                  value={!["Internship", "Build a Project", "General Upskilling", ""].includes(formData.primaryGoal) ? formData.primaryGoal : ""}
-                  onChange={(e) => updateFormData({ primaryGoal: e.target.value })}
-                  className="w-full p-2.5 text-sm rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-600 outline-none"
+                  type="range"
+                  min="1"
+                  max="30"
+                  value={formData.hoursPerWeek}
+                  onChange={(e) => updateFormData({ hoursPerWeek: Number(e.target.value) })}
+                  className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                 />
-              </div>
-
-              {/* Time Commitment */}
-              <div>
-                <label className="text-sm font-semibold text-neutral-700 block mb-2">Weekly Time Commitment</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["1-3 hrs", "3-5 hrs", "10+ hrs"].map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => updateFormData({ timeCommitment: time })}
-                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        formData.timeCommitment === time
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:border-emerald-300"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                <div className="flex justify-between text-xs font-medium text-neutral-400 mt-3 px-1">
+                  <span>1 hr</span>
+                  <span>15 hrs</span>
+                  <span>30 hrs</span>
                 </div>
               </div>
             </div>
-
+            
             <div className="mt-8 flex justify-between">
-              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+              <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
               <Button 
                 onClick={handleGenerate} 
-                disabled={!formData.currentLevel || !formData.primaryGoal.trim() || !formData.timeCommitment || isGenerating} 
-                className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+                disabled={isGenerating} 
+                className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 h-11 px-6 text-base"
               >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {isGenerating ? "Generating..." : "Generate Roadmap"}
+                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {isGenerating ? "Generating..." : "Generate My Roadmap"}
               </Button>
             </div>
           </motion.div>
@@ -360,12 +363,26 @@ export default function RoadmapPage() {
           >
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 flex items-center gap-2">
-            My AI Learning Roadmap
-          </h1>
-          <p className="text-neutral-500 mt-1">
-            Personalized path generated specifically for {studentDomain}.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 flex items-center gap-2">
+                My AI Learning Roadmap
+              </h1>
+              <p className="text-neutral-500 mt-1">
+                Personalized path generated specifically for you.
+              </p>
+            </div>
+            {hasRoadmap && (
+              <Button 
+                onClick={handleSendToMentor} 
+                disabled={isSendingToMentor || sentToMentor}
+                className="bg-neutral-900 hover:bg-neutral-800 text-white shadow-sm self-start sm:self-auto"
+              >
+                {isSendingToMentor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                {sentToMentor ? "Sent for Approval" : "Send to Mentor"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -374,7 +391,7 @@ export default function RoadmapPage() {
           wizardOpen ? (
             <div className="bg-white rounded-2xl border border-neutral-200 p-8 shadow-sm">
               <div className="flex items-center gap-2 mb-8">
-                {[1, 2, 3].map((s) => (
+                {[1, 2, 3, 4].map((s) => (
                   <div key={s} className="flex-1 h-2 rounded-full bg-neutral-100 overflow-hidden">
                     <div 
                       className="h-full bg-indigo-600 transition-all duration-500" 
@@ -394,7 +411,7 @@ export default function RoadmapPage() {
               </div>
               <h2 className="text-2xl font-bold text-neutral-900 mb-3">Ready to map out your journey?</h2>
               <p className="text-neutral-500 mb-8 max-w-md mx-auto leading-relaxed">
-                Answer 3 quick questions about your goals and current skills. Our AI will generate a highly tailored, step-by-step roadmap using the best resources available for your specific engineering branch.
+                Answer 4 quick questions about your goals. Our AI will generate a highly tailored, step-by-step roadmap using the best resources available.
               </p>
               <Button size="lg" onClick={() => setWizardOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md text-base px-8 h-12">
                 Start Wizard
@@ -409,6 +426,7 @@ export default function RoadmapPage() {
                 onUpdateMilestone={handleUpdateMilestone}
                 onRegenerate={() => {
                   setWizardOpen(true);
+                  setStep(1); // Reset step
                   setHasRoadmap(false);
                 }}
               />

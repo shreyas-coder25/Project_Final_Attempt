@@ -47,29 +47,70 @@ export interface RoadmapMilestone {
 export interface RoadmapResource {
   title: string;
   url: string;
-  type: "video" | "doc" | "course";
+  type: "video" | "doc" | "course" | "youtube" | "nptel" | "coursera" | "docs" | "article" | "practice";
+  estimatedMinutes?: number;
+  isPrimary?: boolean;
 }
 
 export interface GeneratedRoadmapMilestone {
   id: string;
-  phase: "short-term" | "long-term";
   title: string;
   description: string;
-  weekRange: string;
   estimatedHours: number;
   skills: string[];
   resources: RoadmapResource[];
   status: "upcoming" | "active" | "done";
+  
+  // New rich fields
+  why?: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  practiceTask?: string;
+  completionCriteria?: string;
+  
+  // Legacy fields
+  phase?: "short-term" | "long-term";
+  weekRange?: string;
+}
+
+export interface RoadmapPhase {
+  phaseNumber: number;
+  title: string;
+  theme: string;
+  durationWeeks: number;
+  weeklyGoal: string;
+  milestones: GeneratedRoadmapMilestone[];
+}
+
+export interface FlatMilestone {
+  id: string;
+  title: string;
+  phaseNumber: number;
+  estimatedHours: number;
 }
 
 export interface GeneratedRoadmap {
-  generatedAt: string;
-  domain: string;
-  targetRole: string;
-  totalWeeks: number;
-  honestAdvice: string;
-  mentorNote: string;
-  milestones: GeneratedRoadmapMilestone[];
+  // New fields
+  meta?: {
+    topic: string;
+    goal: string;
+    timeline: string;
+    totalWeeks: number;
+    hoursPerWeek: number;
+    level: string;
+  };
+  summary?: string;
+  phases?: RoadmapPhase[];
+  flatMilestones?: FlatMilestone[];
+  tips?: string[];
+
+  // Legacy fields
+  generatedAt?: string;
+  domain?: string;
+  targetRole?: string;
+  totalWeeks?: number;
+  honestAdvice?: string;
+  mentorNote?: string;
+  milestones?: GeneratedRoadmapMilestone[];
 }
 
 export interface MentorTask {

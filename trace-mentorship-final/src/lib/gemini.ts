@@ -151,13 +151,14 @@ export async function generateMentorMatchExplanation(
 }
 
 export interface WizardContext {
-  majorDomain?: string;
-  targetRoles?: string[];
-  currentSkills?: string[];
-  isAbsoluteBeginner?: boolean;
-  currentLevel?: string;
-  primaryGoal?: string;
-  timeCommitment?: string;
+  topic: string;
+  timeline: string;
+  currentLevel: string;
+  hoursPerWeek: number;
+  studentBranch?: string;
+  studentRole?: string;
+  studentSkills?: string[];
+  studentGoals?: string;
 }
 
 export async function generatePersonalizedRoadmap(
@@ -165,54 +166,79 @@ export async function generatePersonalizedRoadmap(
 ): Promise<any> {
   const ai = getGeminiClient();
 
-  // Robust default/fallback values to protect against formData incompleteness
-  const majorDomain = context.majorDomain || "Software & AI";
-  const currentLevel = context.currentLevel || "Beginner";
-  const rolesList = (context.targetRoles && context.targetRoles.length > 0)
-    ? context.targetRoles
-    : ["General Professional"];
-  const isBeginner = context.isAbsoluteBeginner ?? false;
-  const skillsList = (context.currentSkills && context.currentSkills.length > 0)
-    ? context.currentSkills
-    : (isBeginner ? ["None / Absolute Beginner"] : ["Basic Knowledge"]);
-  const goal = context.primaryGoal || "General Upskilling";
-  const time = context.timeCommitment || "3-5 hrs";
+  const prompt = `You are an expert learning roadmap designer for engineering students in India.
 
-  const prompt = `You are an expert tech and non-tech career mentor.
-Create a personalized learning roadmap for an engineering student.
-Major Domain: ${majorDomain} (Can be tech like CS, AI, or non-tech like Mechanical, Civil, Electrical, etc.)
-Current Skill Level: ${currentLevel}
-Target Roles: ${rolesList.join(", ")}
-Current Skills: ${isBeginner ? "Absolute Beginner (No prior skills)" : skillsList.join(", ")}
-Primary Goal: ${goal}
-Weekly Time Commitment: ${time}
+Topic: ${context.topic}
+Goal: ${context.studentGoals || "General upskilling in " + context.topic}
+Current Level: ${context.currentLevel}
+Timeline: ${context.timeline} months
+Hours per week: ${context.hoursPerWeek}
 
-Return a STRICT JSON object matching this schema exactly. Do NOT use markdown code blocks.
-Include 4-8 milestones split between "short-term" and "long-term" phases.
-Use high-quality resources. For non-tech domains, use appropriate resources (NPTEL, MIT OpenCourseWare, specific domain books/portals).
-"honestAdvice" must be 2-3 sentences, brutally realistic but encouraging.
+Student Context (use to personalize):
+- Branch: ${context.studentBranch || "Unknown"}
+- Target Role: ${context.studentRole || "Unknown"}
+- Known Skills: ${context.studentSkills?.join(", ") || "None (absolute beginner)"}
 
-Schema:
+OUTPUT RULES:
+- Return ONLY raw JSON matching the schema below. No markdown formatting, no code fences.
+- If timeline is <= 3 months -> 3 phases, 6 months -> 4 phases, >= 1 year -> 5 phases
+- Milestones per phase: 3-5. Resources per milestone: 2-4.
+- Each milestone MUST have practiceTask and completionCriteria.
+- tips: 4 practical, topic-specific tips.
+- YouTube: prefer Apna College, CodeWithHarry, Kunal Kushwaha, Striver, Jenny's Lectures.
+- Free courses: prefer NPTEL, Coursera free audit, freeCodeCamp, CS50.
+- First phase: absolute zero. Last phase: real-world project.
+
+Expected JSON format:
 {
-  "generatedAt": "ISO timestamp",
-  "domain": "string",
-  "targetRole": "string",
-  "totalWeeks": number,
-  "honestAdvice": "string",
-  "mentorNote": "Discuss this with your mentor before starting.",
-  "milestones": [
+  "meta": {
+    "topic": "${context.topic}",
+    "goal": "${context.studentGoals || "General upskilling"}",
+    "timeline": "${context.timeline} months",
+    "totalWeeks": ${Number(context.timeline) * 4},
+    "hoursPerWeek": ${context.hoursPerWeek},
+    "level": "${context.currentLevel}"
+  },
+  "summary": "string",
+  "tips": ["string", "string"],
+  "phases": [
     {
-      "id": "unique string",
-      "phase": "short-term or long-term",
+      "phaseNumber": 1,
       "title": "string",
-      "description": "1-2 sentences, beginner-friendly",
-      "weekRange": "e.g. Week 1-2",
-      "estimatedHours": number,
-      "skills": ["string", "string"],
-      "resources": [
-        { "title": "string", "url": "string", "type": "video or doc or course" }
-      ],
-      "status": "upcoming"
+      "theme": "string",
+      "durationWeeks": 4,
+      "weeklyGoal": "string",
+      "milestones": [
+        {
+          "id": "unique string",
+          "title": "string",
+          "description": "string",
+          "why": "string",
+          "difficulty": "beginner|intermediate|advanced",
+          "skills": ["string"],
+          "estimatedHours": 10,
+          "practiceTask": "string",
+          "completionCriteria": "string",
+          "status": "upcoming",
+          "resources": [
+            {
+              "title": "string",
+              "url": "https://...",
+              "type": "youtube|nptel|coursera|docs|article|practice|course|video",
+              "estimatedMinutes": 60,
+              "isPrimary": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "flatMilestones": [
+    {
+      "id": "same unique string",
+      "title": "string",
+      "phaseNumber": 1,
+      "estimatedHours": 10
     }
   ]
 }`;
@@ -222,116 +248,52 @@ Schema:
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            generatedAt: { type: Type.STRING },
-            domain: { type: Type.STRING },
-            targetRole: { type: Type.STRING },
-            totalWeeks: { type: Type.INTEGER },
-            honestAdvice: { type: Type.STRING },
-            mentorNote: { type: Type.STRING },
-            milestones: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  phase: { type: Type.STRING, enum: ["short-term", "long-term"] },
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  weekRange: { type: Type.STRING },
-                  estimatedHours: { type: Type.INTEGER },
-                  skills: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  resources: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        title: { type: Type.STRING },
-                        url: { type: Type.STRING },
-                        type: { type: Type.STRING, enum: ["video", "doc", "course"] },
-                      },
-                      required: ["title", "url", "type"],
-                    },
-                  },
-                  status: { type: Type.STRING, enum: ["upcoming", "active", "done"] },
-                },
-                required: ["id", "phase", "title", "description", "weekRange", "estimatedHours", "skills", "resources", "status"],
-              },
-            },
-          },
-          required: ["generatedAt", "domain", "targetRole", "totalWeeks", "honestAdvice", "mentorNote", "milestones"],
-        },
+        responseMimeType: "application/json"
       },
     });
 
     return JSON.parse(response.text || "{}");
   } catch (error) {
     console.warn("Gemini API failed, returning mock roadmap. Error:", error);
-    // Fallback Mock Data so the demo doesn't crash on invalid API key
     return {
-      generatedAt: new Date().toISOString(),
-      domain: majorDomain,
-      targetRole: rolesList.join(", "),
-      totalWeeks: 12,
-      honestAdvice: "This is a fallback generated roadmap because the Gemini API key was invalid. To get real AI generation, please configure a valid VITE_GEMINI_API_KEY.",
-      mentorNote: "Discuss this with your mentor before starting.",
-      milestones: [
+      meta: {
+        topic: context.topic,
+        goal: context.studentGoals || "Upskilling",
+        timeline: context.timeline + " months",
+        totalWeeks: Number(context.timeline) * 4,
+        hoursPerWeek: context.hoursPerWeek,
+        level: context.currentLevel
+      },
+      summary: "This is a fallback generated roadmap because the Gemini API key was invalid. To get real AI generation, please configure a valid VITE_GEMINI_API_KEY.",
+      tips: ["Practice coding daily", "Read documentation"],
+      phases: [
         {
-          id: "mock-1",
-          phase: "short-term",
-          title: "Master the Fundamentals",
-          description: "Build a strong foundation in the core principles of your domain before moving on to advanced topics.",
-          weekRange: "Week 1-4",
-          estimatedHours: 15,
-          skills: ["Basics", "Problem Solving"],
-          resources: [
-            { title: "Crash Course on Basics", url: "https://youtube.com", type: "video" },
-            { title: "Official Documentation", url: "https://docs.example.com", type: "doc" }
-          ],
-          status: "active"
-        },
-        {
-          id: "mock-2",
-          phase: "short-term",
-          title: "Build Your First Project",
-          description: "Apply what you have learned by building a small but complete project from scratch.",
-          weekRange: "Week 5-8",
-          estimatedHours: 20,
-          skills: ["Practical Application", "Debugging"],
-          resources: [
-            { title: "Project Tutorial Series", url: "https://youtube.com", type: "course" }
-          ],
-          status: "upcoming"
-        },
-        {
-          id: "mock-3",
-          phase: "long-term",
-          title: "Advanced Concepts & Optimization",
-          description: "Dive deeper into advanced topics, performance optimization, and industry best practices.",
-          weekRange: "Month 3-4",
-          estimatedHours: 30,
-          skills: ["Optimization", "Architecture"],
-          resources: [
-            { title: "Advanced Techniques", url: "https://example.com", type: "doc" }
-          ],
-          status: "upcoming"
-        },
-        {
-          id: "mock-4",
-          phase: "long-term",
-          title: "Portfolio & Interview Prep",
-          description: "Polish your projects, update your resume, and start preparing for technical interviews.",
-          weekRange: "Month 5-6",
-          estimatedHours: 25,
-          skills: ["Interviewing", "Communication"],
-          resources: [
-            { title: "Mock Interview Guide", url: "https://example.com", type: "video" }
-          ],
-          status: "upcoming"
+          phaseNumber: 1,
+          title: "Foundation",
+          theme: "Master the Basics",
+          durationWeeks: 4,
+          weeklyGoal: "Complete the introductory concepts.",
+          milestones: [
+            {
+              id: "mock-1",
+              title: "Learn the Fundamentals",
+              description: "Build a strong foundation in the core principles of your domain.",
+              why: "Essential before moving to advanced topics.",
+              difficulty: "beginner",
+              skills: ["Basics"],
+              estimatedHours: 15,
+              practiceTask: "Create a simple hello world app.",
+              completionCriteria: "Can explain the basic concepts without looking at notes.",
+              status: "active",
+              resources: [
+                { title: "Crash Course", url: "https://youtube.com", type: "youtube", estimatedMinutes: 60, isPrimary: true }
+              ]
+            }
+          ]
         }
+      ],
+      flatMilestones: [
+        { id: "mock-1", title: "Learn the Fundamentals", phaseNumber: 1, estimatedHours: 15 }
       ]
     };
   }

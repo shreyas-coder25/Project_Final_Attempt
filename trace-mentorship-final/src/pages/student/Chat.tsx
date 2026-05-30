@@ -56,7 +56,8 @@ export default function StudentChat() {
       unsubMentorships = subscribeAllMentorshipsForStudent(
         user.uid,
         (data) => {
-          const active = data.filter(m => m.status === "active");
+          // Store already filters out 'archived', so we just use data directly
+          const active = data;
           setActiveMentorships(active);
           
           if (active.length > 0) {
@@ -262,6 +263,21 @@ export default function StudentChat() {
                           } ${msg.isDeleted ? "italic opacity-70" : ""}`}
                         >
                           {msg.isDeleted ? "🚫 This message was deleted" : msg.text}
+                          {!msg.isDeleted && msg.text.includes("🗺️ I've generated my AI learning roadmap") && (
+                            <div className="mt-3">
+                              <Button
+                                size="sm"
+                                onClick={() => navigate("/student/roadmap")}
+                                className={`w-full text-xs font-semibold border-0 ${
+                                  isMine
+                                    ? "bg-white/20 text-white hover:bg-white/30"
+                                    : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                }`}
+                              >
+                                View Roadmap
+                              </Button>
+                            </div>
+                          )}
                           <div className={`text-[10px] mt-1 text-right opacity-60 flex justify-end gap-1 items-center`}>
                             {msg.editedAt && <span>(edited)</span>}
                             <span>{formatTime(msg.timestamp)}</span>

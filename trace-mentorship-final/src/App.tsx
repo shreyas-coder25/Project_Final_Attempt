@@ -18,6 +18,7 @@ import StudentChat from "./pages/student/Chat";
 import MentorChat from "./pages/mentor/Chat";
 import DomainDetail from "./pages/DomainDetail";
 import { requireFirebase } from "./lib/firebase";
+import StudentRoadmap from "./pages/mentor/StudentRoadmap";
 
 function AppContent() {
   const location = useLocation();
@@ -180,6 +181,7 @@ function AppContent() {
           <Route path="/mentor/onboarding" element={<MentorOnboarding />} />
           <Route path="/mentor" element={<MentorDashboard />} />
           <Route path="/mentor/chat" element={<MentorChat />} />
+          <Route path="/mentor/student-roadmap/:studentId" element={<StudentRoadmap />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
