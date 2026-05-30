@@ -13,6 +13,9 @@ import {
   updateDoc,
   where,
   type Unsubscribe,
+  getAggregateFromServer,
+  average,
+  count,
 } from "firebase/firestore";
 import { getMentorsForDomain, mentors, type MentorProfile } from "@/src/data/mentors";
 import { auth, ensureAuth, requireFirebase } from "./firebase";
@@ -179,6 +182,45 @@ export async function saveMentorProfile(profile: MentorProfile): Promise<MentorP
     { merge: true },
   );
   return profile;
+}
+
+export async function submitMentorRating(mentorId: string, studentId: string, rating: number): Promise<void> {
+  const { db } = requireFirebase();
+  await ensureAuth();
+
+  const ratingRef = doc(db, "users", `mentor_${mentorId}`, "ratings", studentId);
+  await setDoc(ratingRef, {
+    rating,
+    studentId,
+    createdAt: Date.now()
+  });
+
+  // Calculate new average and count using Firestore aggregation
+  const ratingsColl = collection(db, "users", `mentor_${mentorId}`, "ratings");
+  const snapshot = await getAggregateFromServer(ratingsColl, {
+    avgRating: average("rating"),
+    totalCount: count()
+  });
+
+  const avg = snapshot.data().avgRating || rating;
+  const c = snapshot.data().totalCount || 1;
+
+  const averageRating = Number(avg.toFixed(1));
+
+  // Update mentor profile
+  await updateDoc(doc(db, "users", `mentor_${mentorId}`), {
+    rating: averageRating,
+    ratingCount: c
+  });
+}
+
+export async function getMyRatingForMentor(mentorId: string, studentId: string): Promise<number | null> {
+  const { db } = requireFirebase();
+  const snap = await getDoc(doc(db, "users", `mentor_${mentorId}`, "ratings", studentId));
+  if (snap.exists()) {
+    return snap.data().rating;
+  }
+  return null;
 }
 
 export function subscribeAllMentorProfiles(
@@ -448,23 +490,8 @@ export async function addChatMessage(
   mentorshipId: string,
   sender: "student" | "mentor",
   text: string,
-): Promise<void>;
-export async function addChatMessage(
-  mentorId: string,
-  studentId: string,
-  sender: "student" | "mentor",
-  text: string,
-): Promise<void>;
-export async function addChatMessage(
-  idOrMentorId: string,
-  senderOrStudentId: "student" | "mentor" | string,
-  textOrSender: string,
-  maybeText?: string,
 ): Promise<void> {
   const { db } = requireFirebase();
-  const mentorshipId = maybeText ? `${idOrMentorId}_${senderOrStudentId}` : idOrMentorId;
-  const sender = (maybeText ? textOrSender : senderOrStudentId) as "student" | "mentor";
-  const text = maybeText || textOrSender;
   await addDoc(collection(db, "mentorships", mentorshipId, "messages"), {
     sender,
     text,

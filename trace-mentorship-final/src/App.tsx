@@ -15,6 +15,7 @@ import MentorDashboard from "./pages/mentor/Dashboard";
 import MentorOnboarding from "./pages/mentor/Onboarding";
 import FindMentors from "./pages/student/FindMentors";
 import StudentChat from "./pages/student/Chat";
+import MentorChat from "./pages/mentor/Chat";
 import DomainDetail from "./pages/DomainDetail";
 import { requireFirebase } from "./lib/firebase";
 
@@ -178,6 +179,7 @@ function AppContent() {
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/mentor/onboarding" element={<MentorOnboarding />} />
           <Route path="/mentor" element={<MentorDashboard />} />
+          <Route path="/mentor/chat" element={<MentorChat />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

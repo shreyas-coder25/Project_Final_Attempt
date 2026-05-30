@@ -19,7 +19,6 @@ import {
 import { Button } from "@/src/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/Card";
 import AssistantChat from "@/src/components/AssistantChat";
-import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
 import { useAllMentors } from "@/src/hooks/useMentors";
 import { subscribeStudentProfile, subscribeAllMentorshipsForStudent, getStudentId, resetStudentProfile, updateMentorshipStatus, type MentorshipRecord } from "@/src/lib/store";
@@ -39,6 +38,11 @@ export default function StudentDashboard() {
   const [showWelcome, setShowWelcome] = useState(searchParams.get("matched") === "true");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [uid, setUid] = useState<string | null>(null);
+
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [ratingSubmitting, setRatingSubmitting] = useState<string | null>(null);
+  const [ratingMessage, setRatingMessage] = useState<string | null>(null);
 
   const allMentorsPool = useAllMentors();
 
@@ -47,6 +51,7 @@ export default function StudentDashboard() {
     let unsubMentorships: (() => void) | undefined;
 
     ensureAuth().then((user) => {
+      setUid(user.uid);
       unsubProfile = subscribeStudentProfile(
         user.uid,
         (data) => {
@@ -59,17 +64,31 @@ export default function StudentDashboard() {
         (err) => console.error("Profile sync error", err)
       );
 
-      unsubMentorships = subscribeAllMentorshipsForStudent(
-        user.uid,
-        (data) => {
+      import("@/src/lib/store").then(({ subscribeAllMentorshipsForStudent, getMyRatingForMentor }) => {
+        unsubMentorships = subscribeAllMentorshipsForStudent(
+          user.uid,
+          (data) => {
             setMentorships(data);
             setLoadingMentorship(false);
-        },
-        (err) => {
+            
+            // Fetch my ratings for active mentors
+            data.filter(m => m.status === "active").forEach(async (m) => {
+              try {
+                const myRating = await getMyRatingForMentor(m.mentorId, user.uid);
+                if (myRating !== null) {
+                  setRatings(prev => ({ ...prev, [m.mentorId]: myRating }));
+                }
+              } catch (e) {
+                console.error("Failed to load rating for", m.mentorId);
+              }
+            });
+          },
+          (err) => {
             console.error("Mentorships sync error", err);
             setLoadingMentorship(false);
-        }
-      );
+          }
+        );
+      });
     }).catch(() => {
       navigate("/login");
     });
@@ -87,6 +106,23 @@ export default function StudentDashboard() {
   if (!profile) return null;
   const studentId = getStudentId();
   const activeMentorships = mentorships.filter((m) => m.status === "active");
+
+  const handleRateMentor = async (mentorId: string, rating: number) => {
+    if (!uid) return;
+    setRatingSubmitting(mentorId);
+    try {
+      const { submitMentorRating } = await import("@/src/lib/store");
+      await submitMentorRating(mentorId, uid, rating);
+      setRatings(prev => ({ ...prev, [mentorId]: rating }));
+      setRatingMessage("Thanks for rating!");
+      setTimeout(() => setRatingMessage(null), 3000);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setRatingSubmitting(null);
+    }
+  };
+
   const pendingMentorships = mentorships.filter((m) => m.status === "pending");
 
   const domainMentors = getMentorsForDomain(profile.domain || "", allMentorsPool);
@@ -248,6 +284,28 @@ export default function StudentDashboard() {
                       >
                         <MessageSquare className="w-4 h-4" /> Message Mentor
                       </Button>
+                      <div className="flex items-center gap-1.5 sm:ml-auto bg-neutral-50 px-3 py-1 rounded-lg border border-neutral-200">
+                        <span className="text-xs font-semibold text-neutral-500 mr-1">Rate Mentor:</span>
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            disabled={ratingSubmitting === mentor.id}
+                            onClick={() => handleRateMentor(mentor.id, star)}
+                            className="p-1 hover:scale-125 transition-transform disabled:opacity-50 focus:outline-none"
+                          >
+                            <Star className={`w-4 h-4 ${
+                              (ratings[mentor.id] || 0) >= star 
+                                ? "text-yellow-500 fill-yellow-500" 
+                                : "text-neutral-300"
+                            }`} />
+                          </button>
+                        ))}
+                        {ratingMessage && ratingSubmitting !== mentor.id && ratings[mentor.id] && (
+                          <span className="text-xs text-green-600 font-medium animate-in fade-in ml-2 hidden sm:inline-block">
+                            {ratingMessage}
+                          </span>
+                        )}
+                      </div>
                       <Button
                         variant="outline"
                         onClick={() => showToast("Call link copied — share with your mentor!")}

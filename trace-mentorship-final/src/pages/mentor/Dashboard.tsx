@@ -19,7 +19,6 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
-import MentorChat from "@/src/components/MentorChat";
 import { type MentorProfile } from "@/src/data/mentors";
 import {
   subscribeMentorshipsForMentor,
@@ -35,8 +34,6 @@ export default function MentorDashboard() {
   const [mentor, setMentor] = useState<MentorProfile | null>(null);
   const [tab, setTab] = useState<"mentees" | "requests">("requests");
   const [selected, setSelected] = useState<MentorshipRecord | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatStudent, setChatStudent] = useState<MentorshipRecord | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -96,8 +93,7 @@ export default function MentorDashboard() {
   };
 
   const openChat = (record: MentorshipRecord) => {
-    setChatStudent(record);
-    setChatOpen(true);
+    navigate(`/mentor/chat?studentId=${record.studentId}`);
   };
   const acceptRequest = (record: MentorshipRecord) => {
     updateMentorshipStatus(record.id, "active");
@@ -149,8 +145,14 @@ export default function MentorDashboard() {
               <div className="text-sm font-bold text-neutral-900 truncate">
                 {mentor.name}
               </div>
-              <div className="text-xs text-neutral-500 truncate">
-                {mentor.domain}
+              <div className="text-xs text-neutral-500 truncate flex items-center gap-1">
+                {mentor.domain} 
+                <span className="text-neutral-300">•</span>
+                <span className="flex items-center text-yellow-600 font-medium">
+                  <Star className="w-3 h-3 fill-yellow-500 mr-0.5" />
+                  {mentor.rating?.toFixed(1) || "5.0"}
+                  {mentor.ratingCount ? ` (${mentor.ratingCount})` : ""}
+                </span>
               </div>
             </div>
           </div>
@@ -514,24 +516,7 @@ export default function MentorDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Mentor Chat */}
-      {chatStudent && (
-        <MentorChat
-          isOpen={chatOpen}
-          onClose={() => {
-            setChatOpen(false);
-            setChatStudent(null);
-          }}
-          mentorId={mentor.id}
-          mentorName={mentor.name}
-          mentorAvatar={mentor.avatar}
-          mentorTitle={mentor.title}
-          studentId={chatStudent.studentId}
-          studentName={chatStudent.studentName}
-          domain={mentor.domain}
-          role="mentor"
-        />
-      )}
+      {/* Modals */}
 
       {/* Profile Modal */}
       <AnimatePresence>

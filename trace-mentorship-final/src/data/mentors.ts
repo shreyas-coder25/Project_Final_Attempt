@@ -18,6 +18,7 @@ export interface MentorProfile {
   responseTime: string;
   bio: string;
   rating: number;
+  ratingCount?: number;
   availability: "available" | "busy" | "limited";
   stats: { mentees: number; totalMentored: number };
 }

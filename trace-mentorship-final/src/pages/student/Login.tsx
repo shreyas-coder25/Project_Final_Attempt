@@ -17,6 +17,8 @@ export default function StudentLogin() {
       const unsubscribe = auth.onAuthStateChanged((user) => {
         if (user) {
           processLogin(user);
+        } else {
+          setIsLoading(false);
         }
       });
       return () => unsubscribe();

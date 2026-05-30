@@ -3,7 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInAnonymously,
-  signInWithRedirect,
+  signInWithPopup,
   type Auth,
   type User,
 } from "firebase/auth";
@@ -46,7 +46,7 @@ export function requireFirebase() {
 export async function signInWithGoogle(): Promise<void> {
   const { auth } = requireFirebase();
   const provider = new GoogleAuthProvider();
-  await signInWithRedirect(auth, provider);
+  await signInWithPopup(auth, provider);
 }
 
 export async function ensureAuth(): Promise<User> {

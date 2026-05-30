@@ -3,16 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, MessageSquare } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { 
-  subscribeStudentProfile, 
-  subscribeAllMentorshipsForStudent, 
+  subscribeMentorProfile, 
+  subscribeMentorshipsForMentor, 
   subscribeChatMessages,
   addChatMessage,
   type MentorshipRecord,
   type ChatMessage 
 } from "@/src/lib/store";
 import { ensureAuth } from "@/src/lib/firebase";
-import { getMentorById } from "@/src/data/mentors";
-import { useAllMentors } from "@/src/hooks/useMentors";
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -30,17 +28,16 @@ function formatDateLabel(ts: number): string {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export default function StudentChat() {
+export default function MentorChat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialMentorId = searchParams.get("mentorId");
+  const initialStudentId = searchParams.get("studentId");
 
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   const [activeMentorships, setActiveMentorships] = useState<MentorshipRecord[]>([]);
   const [selectedMentorshipId, setSelectedMentorshipId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const allMentorsPool = useAllMentors();
 
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -49,8 +46,8 @@ export default function StudentChat() {
     let unsubMentorships: (() => void) | undefined;
 
     ensureAuth().then((user) => {
-      unsubProfile = subscribeStudentProfile(user.uid, setProfile, console.error);
-      unsubMentorships = subscribeAllMentorshipsForStudent(
+      unsubProfile = subscribeMentorProfile(user.uid, setProfile, console.error);
+      unsubMentorships = subscribeMentorshipsForMentor(
         user.uid,
         (data) => {
           const active = data.filter(m => m.status === "active");
@@ -58,8 +55,8 @@ export default function StudentChat() {
           
           if (active.length > 0) {
             // Select based on URL or just pick the first one
-            if (initialMentorId) {
-              const matched = active.find(m => m.mentorId === initialMentorId);
+            if (initialStudentId) {
+              const matched = active.find(m => m.studentId === initialStudentId);
               if (matched) {
                 setSelectedMentorshipId(matched.id);
                 return;
@@ -80,7 +77,7 @@ export default function StudentChat() {
       if (unsubProfile) unsubProfile();
       if (unsubMentorships) unsubMentorships();
     };
-  }, [navigate, initialMentorId]);
+  }, [navigate, initialStudentId]);
 
   useEffect(() => {
     if (!selectedMentorshipId) {
@@ -102,11 +99,15 @@ export default function StudentChat() {
   if (!profile) return null;
 
   const selectedMentorship = activeMentorships.find(m => m.id === selectedMentorshipId);
-  const mentor = selectedMentorship ? getMentorById(selectedMentorship.mentorId, allMentorsPool) : null;
+  const studentInfo = selectedMentorship ? {
+    name: selectedMentorship.studentName,
+    avatar: selectedMentorship.studentAvatar,
+    domain: selectedMentorship.studentDomain
+  } : null;
 
   const handleSend = () => {
     if (!input.trim() || !selectedMentorship) return;
-    addChatMessage(selectedMentorship.id, "student", input.trim());
+    addChatMessage(selectedMentorship.id, "mentor", input.trim());
     setInput("");
   };
 
@@ -116,7 +117,7 @@ export default function StudentChat() {
       <div className="w-80 border-r border-neutral-200 bg-white flex flex-col hidden md:flex shrink-0">
         <div className="p-4 border-b border-neutral-200">
           <button 
-            onClick={() => navigate("/student")}
+            onClick={() => navigate("/mentor")}
             className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Dashboard
@@ -127,12 +128,10 @@ export default function StudentChat() {
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {activeMentorships.length === 0 ? (
             <div className="text-center p-6 text-neutral-500 text-sm">
-              No active mentors.
+              No active mentees.
             </div>
           ) : (
             activeMentorships.map(m => {
-              const mData = getMentorById(m.mentorId, allMentorsPool);
-              if (!mData) return null;
               const isSelected = m.id === selectedMentorshipId;
               
               return (
@@ -143,12 +142,12 @@ export default function StudentChat() {
                     isSelected ? "bg-indigo-50 border border-indigo-100" : "hover:bg-neutral-50 border border-transparent"
                   }`}
                 >
-                  <img src={mData.avatar} alt={mData.name} className="w-12 h-12 rounded-full border border-neutral-200" />
+                  <img src={m.studentAvatar} alt={m.studentName} className="w-12 h-12 rounded-full border border-neutral-200" />
                   <div className="flex-1 min-w-0">
                     <div className={`font-semibold truncate text-sm ${isSelected ? "text-indigo-900" : "text-neutral-900"}`}>
-                      {mData.name}
+                      {m.studentName}
                     </div>
-                    <div className="text-xs text-neutral-500 truncate">{mData.title}</div>
+                    <div className="text-xs text-neutral-500 truncate">{m.studentDomain}</div>
                   </div>
                 </button>
               );
@@ -159,12 +158,12 @@ export default function StudentChat() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white min-w-0">
-        {!selectedMentorship || !mentor ? (
+        {!selectedMentorship || !studentInfo ? (
           <div className="flex-1 flex flex-col items-center justify-center text-neutral-500 p-8 text-center bg-neutral-50">
             <MessageSquare className="w-12 h-12 mb-4 text-neutral-300" />
             <h3 className="text-lg font-semibold text-neutral-900 mb-2">Select a Conversation</h3>
             <p className="text-sm max-w-sm">
-              Choose a mentor from the sidebar to start chatting. If you don't have a mentor yet, request one from the Find Mentors page.
+              Choose a mentee from the sidebar to start chatting.
             </p>
           </div>
         ) : (
@@ -173,14 +172,14 @@ export default function StudentChat() {
             <div className="h-16 px-4 sm:px-6 border-b border-neutral-200 bg-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => navigate("/student")}
+                  onClick={() => navigate("/mentor")}
                   className="md:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <img src={mentor.avatar} alt={mentor.name} className="w-10 h-10 rounded-full border border-neutral-200" />
+                <img src={studentInfo.avatar} alt={studentInfo.name} className="w-10 h-10 rounded-full border border-neutral-200" />
                 <div>
-                  <h3 className="font-bold text-sm text-neutral-900">{mentor.name}</h3>
+                  <h3 className="font-bold text-sm text-neutral-900">{studentInfo.name}</h3>
                   <div className="text-xs text-neutral-500 flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-green-500" /> Active
                   </div>
@@ -210,7 +209,7 @@ export default function StudentChat() {
                     No messages yet
                   </p>
                   <p className="text-xs text-neutral-400 leading-relaxed max-w-[240px]">
-                    Say hello to {mentor.name.split(" ")[0]}! Start your mentorship conversation.
+                    Say hello to {studentInfo.name.split(" ")[0]}! Start your mentorship conversation.
                   </p>
                 </div>
               )}
@@ -219,7 +218,7 @@ export default function StudentChat() {
                   const prevDate = i > 0 ? formatDateLabel(messages[i - 1].timestamp) : null;
                   const curDate = formatDateLabel(msg.timestamp);
                   const showDate = curDate !== prevDate;
-                  const isMine = msg.sender === "student";
+                  const isMine = msg.sender === "mentor";
                   return (
                     <div key={msg.id}>
                       {showDate && (

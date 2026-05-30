@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle2, 
@@ -103,7 +103,13 @@ export default function RoadmapView({ roadmap, onUpdateMilestone, onRegenerate, 
   );
 }
 
-function MilestoneCard({ milestone, index, onUpdateStatus }: { milestone: GeneratedRoadmapMilestone, index: number, onUpdateStatus: (s: "upcoming"|"active"|"done") => void }) {
+interface MilestoneCardProps {
+  milestone: GeneratedRoadmapMilestone;
+  index: number;
+  onUpdateStatus: (s: "upcoming" | "active" | "done") => void;
+}
+
+const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, index, onUpdateStatus }) => {
   const [expanded, setExpanded] = useState(false);
 
   const getStatusColor = () => {

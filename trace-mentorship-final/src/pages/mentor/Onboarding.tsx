@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/src/components/ui/Button";
@@ -36,22 +36,28 @@ export default function MentorOnboarding() {
 
       const selectedBranch = branches.find(b => b.id === data.branchId);
 
-      const profile = {
+      const newProfile = {
         id: user.uid,
-        username: user.email?.split("@")[0] || user.uid.slice(0, 8),
+        username: user.email?.split("@")[0] || user.uid,
         name: user.displayName || "New Mentor",
         title: data.title,
         domain: selectedBranch?.title || data.branchId,
         branchId: data.branchId,
         bio: data.bio,
-        expertise: data.expertise.split(",").map(s => s.trim()).filter(Boolean),
+        expertise: data.expertise.split(",").map((s) => s.trim()).filter(Boolean),
         responseTime: data.responseTime,
-        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
         rating: 5.0,
-        activeMentees: 0
+        ratingCount: 0,
+        activeMentees: 0,
+        availability: "available",
+        stats: {
+          mentees: 0,
+          totalMentored: 0,
+        }
       };
 
-      await saveMentorProfile(profile);
+      await saveMentorProfile(newProfile as any);
       localStorage.setItem("lastActiveView", "mentor");
       navigate("/mentor");
     } catch (err) {
@@ -123,6 +129,23 @@ export default function MentorOnboarding() {
               placeholder="e.g. React, Node.js, System Design"
               className="w-full h-11 px-4 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-colors"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-neutral-900">Response Time</label>
+            <select
+              required
+              value={data.responseTime}
+              onChange={(e) => setData({ ...data, responseTime: e.target.value })}
+              className="w-full h-11 px-4 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-colors bg-white"
+            >
+              <option value="Usually responds within 1 hour">Usually responds within 1 hour</option>
+              <option value="Usually responds within 3 hours">Usually responds within 3 hours</option>
+              <option value="Usually responds within 6 hours">Usually responds within 6 hours</option>
+              <option value="Usually responds within 12 hours">Usually responds within 12 hours</option>
+              <option value="Usually responds within 24 hours">Usually responds within 24 hours</option>
+              <option value="Usually responds within 48 hours">Usually responds within 48 hours</option>
+            </select>
           </div>
 
           <Button type="submit" disabled={isSubmitting} className="w-full h-12 text-base">

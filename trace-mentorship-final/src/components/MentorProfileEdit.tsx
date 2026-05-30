@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { X, Save } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
@@ -97,12 +97,18 @@ export default function MentorProfileEdit({
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Response Time</label>
-            <input
-              type="text"
+            <select
               value={data.responseTime}
               onChange={(e) => setData({ ...data, responseTime: e.target.value })}
               className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
+            >
+              <option value="Usually responds within 1 hour">Usually responds within 1 hour</option>
+              <option value="Usually responds within 3 hours">Usually responds within 3 hours</option>
+              <option value="Usually responds within 6 hours">Usually responds within 6 hours</option>
+              <option value="Usually responds within 12 hours">Usually responds within 12 hours</option>
+              <option value="Usually responds within 24 hours">Usually responds within 24 hours</option>
+              <option value="Usually responds within 48 hours">Usually responds within 48 hours</option>
+            </select>
           </div>
         </div>
 
