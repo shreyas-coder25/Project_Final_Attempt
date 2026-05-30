@@ -16,12 +16,7 @@ import {
   shortTermGoals,
 } from "@/src/data/domainMatrix";
 
-const years = [
-  { value: "FY", label: "FY (1st Year)" },
-  { value: "SY", label: "SY (2nd Year)" },
-  { value: "TY", label: "TY (3rd Year)" },
-  { value: "Final", label: "Final Year" },
-];
+
 
 export default function StudentOnboarding() {
   const navigate = useNavigate();
@@ -37,7 +32,6 @@ export default function StudentOnboarding() {
   const [data, setData] = useState({
     name: "",
     branchId: "",
-    year: "",
     graduationYear: "",
     role: "",
     skills: [] as string[],
@@ -80,8 +74,18 @@ export default function StudentOnboarding() {
       const roleName = data.role;
       const finalGoals = [...data.goals, data.customGoal].filter(Boolean).join(" | ");
 
+      const currentYear = new Date().getFullYear();
+      const gradYear = parseInt(data.graduationYear);
+      const diff = gradYear - currentYear;
+      
+      let computedYear = "FY";
+      if (diff <= 0) computedYear = "Final";
+      else if (diff === 1) computedYear = "TY";
+      else if (diff === 2) computedYear = "SY";
+
       const profileToSave = {
         ...data,
+        year: computedYear,
         goals: finalGoals,
         branch: branchName,
         domain: roleName,
@@ -92,7 +96,7 @@ export default function StudentOnboarding() {
       await createMentorship(
         { 
           name: data.name, 
-          year: data.year, 
+          year: computedYear, 
           branch: branchName, 
           domain: roleName, 
           goals: finalGoals, 
@@ -153,30 +157,19 @@ export default function StudentOnboarding() {
                   />
                 </div>
                 <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                  <label className="text-sm font-medium text-neutral-700">Year</label>
-                  <select
-                    value={data.year}
-                    onChange={(e) => updateData({ year: e.target.value })}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 bg-white transition-shadow"
-                  >
-                    <option value="" disabled>Select Year</option>
-                    {years.map((y) => (
-                      <option key={y.value} value={y.value}>{y.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5 col-span-2 sm:col-span-1">
                   <label className="text-sm font-medium text-neutral-700">Graduation Year</label>
-                  <select
+                  <input
+                    type="number"
+                    min="2000"
+                    max="2100"
                     value={data.graduationYear}
-                    onChange={(e) => updateData({ graduationYear: e.target.value })}
-                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 bg-white transition-shadow"
-                  >
-                    <option value="" disabled>Select Grad Year</option>
-                    {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
-                      <option key={y} value={y.toString()}>{y}</option>
-                    ))}
-                  </select>
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 4) updateData({ graduationYear: val });
+                    }}
+                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-shadow"
+                    placeholder="e.g. 2026"
+                  />
                 </div>
               </div>
 
@@ -210,7 +203,7 @@ export default function StudentOnboarding() {
             </div>
             <Button
               onClick={handleNext}
-              disabled={!data.name.trim() || !data.year || !data.graduationYear || !data.branchId}
+              disabled={!data.name.trim() || data.graduationYear.length !== 4 || !data.branchId}
               className="w-full mt-6"
             >
               Continue
