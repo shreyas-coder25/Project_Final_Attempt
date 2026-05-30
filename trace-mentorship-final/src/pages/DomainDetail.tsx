@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Briefcase, Code, GraduationCap, Layers, Lightbulb, Users, Star } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { getDomainBySlug, getMentorsForDomain } from "@/src/data/mentors";
+import { useAllMentors } from "@/src/hooks/useMentors";
 
 export default function DomainDetail() {
   const { slug } = useParams<{ slug: string }>();
   const domain = slug ? getDomainBySlug(slug) : undefined;
   if (!domain) return <Navigate to="/" replace />;
-
-  const domainMentors = getMentorsForDomain(domain.title);
+  const allMentorsPool = useAllMentors();
+  const domainMentors = getMentorsForDomain(domain.title, allMentorsPool);
   const fade = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4 } };
 
   return (

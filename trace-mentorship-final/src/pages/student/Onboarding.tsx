@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ensureAuth } from "@/src/lib/firebase";
+import { useAllMentors } from "@/src/hooks/useMentors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Sparkles, Star, Clock, Users } from "lucide-react";
@@ -30,6 +31,7 @@ export default function StudentOnboarding() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMentorId, setSelectedMentorId] = useState("");
+  const allMentorsPool = useAllMentors();
   
   useEffect(() => {
     ensureAuth().catch(() => navigate("/login"));
@@ -117,7 +119,7 @@ export default function StudentOnboarding() {
   const branch = getBranchById(data.branchId);
   const currentSkillsList = branch && data.role ? getSkillsForRole(branch, data.role) : [];
   const rankedMentors: MentorProfile[] = data.branchId
-    ? getRankedMentorsForBranch(data.branchId, data.role, data.skills)
+    ? getRankedMentorsForBranch(data.branchId, data.role, data.skills, allMentorsPool)
     : [];
 
   const totalSteps = 6;

@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Code, Database, Layout, Shield, Cpu, Terminal, Users, Sparkles, UserCheck, Heart } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { getMentorsForDomain } from "@/src/data/mentors";
+import { useAllMentors } from "@/src/hooks/useMentors";
 
 export default function Landing() {
+  const allMentorsPool = useAllMentors();
   const fadeIn = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5 } };
 
   const domainCards = [
@@ -107,7 +109,7 @@ export default function Landing() {
           <div className="max-w-2xl mb-12"><h2 className="text-3xl font-bold tracking-tight text-neutral-900 mb-4">Explore Domains</h2><p className="text-neutral-500">Find specialized guidance across every major engineering discipline.</p></div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {domainCards.map((d, i) => {
-              const count = getMentorsForDomain(d.title).length;
+              const count = getMentorsForDomain(d.title, allMentorsPool).length;
               return (
                 <Link to={`/domain/${d.slug}`} key={i} className="group relative rounded-2xl border border-neutral-200 bg-white p-6 transition-all hover:bg-neutral-50 hover:shadow-md hover:border-neutral-300 flex flex-col cursor-pointer">
                   <div className="h-10 w-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900 mb-4 group-hover:scale-110 transition-transform">{d.icon}</div>

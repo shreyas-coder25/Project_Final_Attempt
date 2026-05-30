@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import { Button } from "@/src/components/ui/Button";
 import { saveMentorProfile } from "@/src/lib/store";
 import { requireFirebase } from "@/src/lib/firebase";
-import { domainMatrix } from "@/src/data/domainMatrix";
+import { branches } from "@/src/data/domainMatrix";
 
 export default function MentorOnboarding() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [data, setData] = useState({
     title: "",
-    domain: "",
+    branchId: "",
     bio: "",
     expertise: "",
     responseTime: "Usually responds within 24 hours"
@@ -34,12 +34,15 @@ export default function MentorOnboarding() {
       const user = auth.currentUser;
       if (!user) throw new Error("Not authenticated");
 
+      const selectedBranch = branches.find(b => b.id === data.branchId);
+
       const profile = {
         id: user.uid,
         username: user.email?.split("@")[0] || user.uid.slice(0, 8),
         name: user.displayName || "New Mentor",
         title: data.title,
-        domain: data.domain,
+        domain: selectedBranch?.title || data.branchId,
+        branchId: data.branchId,
         bio: data.bio,
         expertise: data.expertise.split(",").map(s => s.trim()).filter(Boolean),
         responseTime: data.responseTime,
@@ -85,16 +88,16 @@ export default function MentorOnboarding() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-neutral-900">Domain</label>
+            <label className="text-sm font-semibold text-neutral-900">Branch</label>
             <select
               required
-              value={data.domain}
-              onChange={(e) => setData({ ...data, domain: e.target.value })}
+              value={data.branchId}
+              onChange={(e) => setData({ ...data, branchId: e.target.value })}
               className="w-full h-11 px-4 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-colors bg-white"
             >
-              <option value="" disabled>Select your primary domain</option>
-              {Object.keys(domainMatrix).map((d) => (
-                <option key={d} value={d}>{d}</option>
+              <option value="" disabled>Select your primary branch</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.title}</option>
               ))}
             </select>
           </div>

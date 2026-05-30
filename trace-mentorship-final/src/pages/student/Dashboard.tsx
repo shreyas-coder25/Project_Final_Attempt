@@ -21,7 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/Ca
 import AssistantChat from "@/src/components/AssistantChat";
 import MentorChat from "@/src/components/MentorChat";
 import { getMentorById, getMentorsForDomain } from "@/src/data/mentors";
-import { subscribeStudentProfile, subscribeMentorshipForStudent, getStudentId, resetStudentProfile, type MentorshipRecord } from "@/src/lib/store";
+import { useAllMentors } from "@/src/hooks/useMentors";
+import { subscribeStudentProfile, subscribeAllMentorshipsForStudent, getStudentId, resetStudentProfile, updateMentorshipStatus, type MentorshipRecord } from "@/src/lib/store";
 import { ensureAuth } from "@/src/lib/firebase";
 import { requireFirebase } from "@/src/lib/firebase";
 import StudentProfileEdit from "@/src/components/StudentProfileEdit";
@@ -30,18 +31,20 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
-  const [mentorship, setMentorship] = useState<MentorshipRecord | null>(null);
+  const [mentorships, setMentorships] = useState<MentorshipRecord[]>([]);
+  const [loadingMentorship, setLoadingMentorship] = useState(true);
   const [toast, setToast] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(searchParams.get("matched") === "true");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
+  const allMentorsPool = useAllMentors();
+
   useEffect(() => {
     let unsubProfile: (() => void) | undefined;
-    let unsubMentorship: (() => void) | undefined;
+    let unsubMentorships: (() => void) | undefined;
 
     ensureAuth().then((user) => {
       unsubProfile = subscribeStudentProfile(
@@ -56,33 +59,37 @@ export default function StudentDashboard() {
         (err) => console.error("Profile sync error", err)
       );
 
-      unsubMentorship = subscribeMentorshipForStudent(
+      unsubMentorships = subscribeAllMentorshipsForStudent(
         user.uid,
-        (data) => setMentorship(data),
-        (err) => console.error("Mentorship sync error", err)
+        (data) => {
+            setMentorships(data);
+            setLoadingMentorship(false);
+        },
+        (err) => {
+            console.error("Mentorships sync error", err);
+            setLoadingMentorship(false);
+        }
       );
     }).catch(() => {
       navigate("/login");
     });
 
     if (searchParams.get("matched") === "true") {
-      setShowWelcome(true);
       setTimeout(() => setShowWelcome(false), 4000);
     }
 
     return () => {
       if (unsubProfile) unsubProfile();
-      if (unsubMentorship) unsubMentorship();
+      if (unsubMentorships) unsubMentorships();
     };
   }, [navigate, searchParams]);
 
   if (!profile) return null;
-  const mentor = mentorship ? getMentorById(mentorship.mentorId) : null;
   const studentId = getStudentId();
-  const isPending = mentorship?.status === "pending";
-  const isActive = mentorship?.status === "active";
+  const activeMentorships = mentorships.filter((m) => m.status === "active");
+  const pendingMentorships = mentorships.filter((m) => m.status === "pending");
 
-  const domainMentors = getMentorsForDomain(profile.domain || "");
+  const domainMentors = getMentorsForDomain(profile.domain || "", allMentorsPool);
   const firstName = profile.name?.split(" ")[0] || "Student";
   const showToast = (msg: string) => {
     setToast(msg);
@@ -133,9 +140,7 @@ export default function StudentDashboard() {
                 Request Sent!
               </h2>
               <p className="text-neutral-500 max-w-xs mx-auto">
-                {mentor
-                  ? `Your mentorship request has been sent to ${mentor.name}. They'll review it soon!`
-                  : "Your mentor will review your request soon!"}
+                Your mentor request has been sent! They'll review it soon!
               </p>
             </motion.div>
           </motion.div>
@@ -155,14 +160,14 @@ export default function StudentDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {isPending && (
+              {pendingMentorships.length > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
-                  <Hourglass className="w-4 h-4" /> Awaiting Mentor Approval
+                  <Hourglass className="w-4 h-4" /> {pendingMentorships.length} Awaiting Approval
                 </div>
               )}
-              {isActive && (
+              {activeMentorships.length > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> Mentorship Active
+                  <CheckCircle2 className="w-4 h-4" /> {activeMentorships.length} Active
                 </div>
               )}
               <button
@@ -181,127 +186,158 @@ export default function StudentDashboard() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Mentor Card — Pending State */}
-            {mentor && isPending && (
-              <Card className="overflow-hidden border-2 border-amber-200 bg-amber-50/30">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={mentor.avatar}
-                      alt={mentor.name}
-                      className="w-16 h-16 rounded-full bg-neutral-100 border border-neutral-200 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-xl font-bold text-neutral-900">
-                        {mentor.name}
-                      </h2>
-                      <p className="text-sm text-neutral-500">{mentor.title}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> Avg response:{" "}
-                          {mentor.responseTime}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
-                          {mentor.rating}
-                        </span>
+            
+            {/* Find Mentor Action (Always available if they want to add more) */}
+            <div className="flex justify-end">
+              <Button onClick={() => navigate("/student/mentors")} className="gap-2">
+                <Sparkles className="w-4 h-4" /> Find More Mentors
+              </Button>
+            </div>
+
+            {/* Active Mentors */}
+            {activeMentorships.map((m) => {
+              const mentor = getMentorById(m.mentorId, allMentorsPool);
+              if (!mentor) return null;
+              return (
+                <Card key={m.id} className="overflow-hidden border-2 border-green-200">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={mentor.avatar}
+                        alt={mentor.name}
+                        className="w-16 h-16 rounded-full bg-neutral-100 border border-neutral-200 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xl font-bold text-neutral-900">
+                            {mentor.name}
+                          </h2>
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold">
+                            ACTIVE
+                          </span>
+                        </div>
+                        <p className="text-sm text-neutral-500">{mentor.title}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Avg response:{" "}
+                            {mentor.responseTime}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
+                            {mentor.rating}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Hourglass className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm font-semibold text-amber-800">
-                        Waiting for Acceptance
-                      </span>
+                    <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-semibold text-green-800">
+                          Mentorship Accepted
+                        </span>
+                      </div>
+                      <p className="text-sm text-green-700">
+                        {mentor.name.split(" ")[0]} has accepted your request! You can now
+                        message them and start your guided learning journey.
+                      </p>
                     </div>
-                    <p className="text-sm text-amber-700">
-                      Your mentorship request has been sent to {mentor.name.split(" ")[0]}. 
-                      Once they accept, you'll be able to start chatting and 
-                      receiving personalized guidance.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {mentor.expertise.slice(0, 4).map((e) => (
-                      <span
-                        key={e}
-                        className="px-3 py-1 bg-neutral-100 rounded-md text-xs font-medium text-neutral-700"
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <Button
+                        onClick={() => navigate(`/student/chat?mentorId=${mentor.id}`)}
+                        className="gap-2"
                       >
-                        {e}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                        <MessageSquare className="w-4 h-4" /> Message Mentor
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => showToast("Call link copied — share with your mentor!")}
+                        className="gap-2"
+                      >
+                        <Calendar className="w-4 h-4" /> Schedule Call
+                      </Button>
+                      <div className="flex-1" />
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          if (confirm("Are you sure you want to leave this mentorship?")) {
+                            await updateMentorshipStatus(m.id, "archived");
+                            showToast("You have left the mentorship.");
+                          }
+                        }}
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        Leave Mentor
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
 
-            {/* Mentor Card — Active State */}
-            {mentor && isActive && (
-              <Card className="overflow-hidden border-2 border-green-200">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={mentor.avatar}
-                      alt={mentor.name}
-                      className="w-16 h-16 rounded-full bg-neutral-100 border border-neutral-200 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+            {/* Pending Requests */}
+            {pendingMentorships.map((m) => {
+              const mentor = getMentorById(m.mentorId, allMentorsPool);
+              if (!mentor) return null;
+              return (
+                <Card key={m.id} className="overflow-hidden border-2 border-amber-200 bg-amber-50/30">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={mentor.avatar}
+                        alt={mentor.name}
+                        className="w-16 h-16 rounded-full bg-neutral-100 border border-neutral-200 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
                         <h2 className="text-xl font-bold text-neutral-900">
                           {mentor.name}
                         </h2>
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold">
-                          ACTIVE
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-500">{mentor.title}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> Avg response:{" "}
-                          {mentor.responseTime}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
-                          {mentor.rating}
-                        </span>
+                        <p className="text-sm text-neutral-500">{mentor.title}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Avg response:{" "}
+                            {mentor.responseTime}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
+                            {mentor.rating}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-semibold text-green-800">
-                        Mentorship Accepted
-                      </span>
+                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Hourglass className="w-4 h-4 text-amber-600" />
+                        <span className="text-sm font-semibold text-amber-800">
+                          Waiting for Acceptance
+                        </span>
+                      </div>
+                      <p className="text-sm text-amber-700">
+                        Your mentorship request has been sent to {mentor.name.split(" ")[0]}. 
+                        Once they accept, you'll be able to start chatting and 
+                        receiving personalized guidance.
+                      </p>
                     </div>
-                    <p className="text-sm text-green-700">
-                      {mentor.name.split(" ")[0]} has accepted your request! You can now
-                      message them and start your guided learning journey.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3 pt-2">
-                    <Button
-                      onClick={() => setChatOpen(true)}
-                      className="gap-2"
-                    >
-                      <MessageSquare className="w-4 h-4" /> Message Mentor
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        showToast("Call link copied — share with your mentor!")
-                      }
-                      className="gap-2"
-                    >
-                      <Calendar className="w-4 h-4" /> Schedule Call
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          if (confirm("Are you sure you want to cancel this request?")) {
+                            await updateMentorshipStatus(m.id, "archived");
+                            showToast("Request cancelled.");
+                          }
+                        }}
+                        className="text-neutral-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        Cancel Request
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
 
-            {/* No mentor fallback */}
-            {!mentor && (
+            {/* No mentors fallback */}
+            {mentorships.length === 0 && (
               <Card>
                 <CardContent className="p-8 text-center">
                   <MapPin className="w-10 h-10 mx-auto mb-4 text-neutral-300" />
@@ -309,88 +345,18 @@ export default function StudentDashboard() {
                     No mentor assigned yet
                   </h3>
                   <p className="text-sm text-neutral-500 mb-4">
-                    Complete the onboarding to get matched with a domain mentor.
+                    Find and request mentors that match your goals.
                   </p>
-                  <Button onClick={() => navigate("/onboarding")}>
-                    Start Onboarding
+                  <Button onClick={() => navigate("/student/mentors")}>
+                    Find Mentors
                   </Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Other mentors in domain */}
-            {domainMentors.length > 1 && mentor && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Star className="w-4 h-4 text-neutral-500" /> Other Mentors
-                    in {profile.domain}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-4">
-                  <div className="space-y-3">
-                    {domainMentors
-                      .filter((m) => m.id !== mentor.id)
-                      .slice(0, 3)
-                      .map((m) => (
-                        <div
-                          key={m.id}
-                          className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 border border-neutral-100"
-                        >
-                          <img
-                            src={m.avatar}
-                            alt={m.name}
-                            className="w-10 h-10 rounded-full bg-neutral-100"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-neutral-900 truncate">
-                              {m.name}
-                            </div>
-                            <div className="text-xs text-neutral-500 truncate">
-                              {m.title}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-neutral-500">
-                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />{" "}
-                            {m.rating}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Chat Preview — empty state */}
-            {isActive && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-neutral-500" />{" "}
-                    Recent Messages
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <Send className="w-8 h-8 mx-auto mb-3 text-neutral-200 rotate-[-30deg]" />
-                    <p className="text-sm text-neutral-500 mb-1">
-                      No messages yet
-                    </p>
-                    <p className="text-xs text-neutral-400 mb-4">
-                      Start a conversation with your mentor
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setChatOpen(true)}
-                      className="gap-1.5"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Open Chat
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+
+            {/* Chat Preview Removed -> Direct to /student/chat */}
           </div>
 
           {/* Sidebar */}
@@ -529,21 +495,7 @@ export default function StudentDashboard() {
         studentProfile={profile}
       />
 
-      {/* Mentor Chat — only available when mentorship is active */}
-      {mentor && mentorship && isActive && (
-        <MentorChat
-          isOpen={chatOpen}
-          onClose={() => setChatOpen(false)}
-          mentorId={mentor.id}
-          mentorName={mentor.name}
-          mentorAvatar={mentor.avatar}
-          mentorTitle={mentor.title}
-          studentId={studentId}
-          studentName={profile.name || "Student"}
-          domain={profile.domain}
-          role="student"
-        />
-      )}
+      {/* Mentor Chat Modal Removed */}
 
       {/* Edit Profile Modal */}
       <AnimatePresence>

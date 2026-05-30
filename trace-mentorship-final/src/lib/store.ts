@@ -181,6 +181,23 @@ export async function saveMentorProfile(profile: MentorProfile): Promise<MentorP
   return profile;
 }
 
+export function subscribeAllMentorProfiles(
+  onUpdate: (profiles: MentorProfile[]) => void,
+  onError?: (error: Error) => void
+): () => void {
+  const { db } = requireFirebase();
+  const q = query(collection(db, "users"), where("role", "==", "mentor"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const data = snap.docs.map((doc) => doc.data() as MentorProfile);
+      onUpdate(data);
+    },
+    onError
+  );
+}
+
+
 export function subscribeMentorProfile(
   mentorId: string,
   onUpdate: (data: MentorProfile | null) => void,
@@ -243,11 +260,8 @@ export async function createMentorship(
 ): Promise<MentorshipRecord> {
   const { db } = requireFirebase();
   const user = await ensureAuth();
-  const existing = await getDocs(
-    query(collection(db, "mentorships"), where("studentId", "==", user.uid))
-  );
-  const activeDocs = existing.docs.filter((doc) => doc.data().status !== "archived");
-  await Promise.all(activeDocs.map((snap) => updateDoc(snap.ref, { status: "archived" })));
+  
+  // No longer archiving existing mentorships — support multiple!
 
   const record = {
     studentId: user.uid,
@@ -288,6 +302,24 @@ export function subscribeMentorshipForStudent(
     onError,
   );
 }
+
+export function subscribeAllMentorshipsForStudent(
+  studentId: string,
+  onChange: (records: MentorshipRecord[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe {
+  const { db } = requireFirebase();
+  return onSnapshot(
+    query(collection(db, "mentorships"), where("studentId", "==", studentId)),
+    (snap) => {
+      const active = snap.docs.filter((d) => d.data().status !== "archived");
+      onChange(active.map((d) => ({ id: d.id, ...d.data() }) as MentorshipRecord));
+    },
+    onError,
+  );
+}
+
+
 
 /**
  * @deprecated This is a mock stub. Use subscribeMentorshipForStudent() instead for real-time Firestore integration.

@@ -335,16 +335,16 @@ export const domains: DomainInfo[] = [
 
 // ─── Helpers ───────────────────────────────────────────────────
 
-export function getMentorById(id: string): MentorProfile | undefined {
-  return mentors.find((m) => m.id === id);
+export function getMentorById(id: string, pool: MentorProfile[] = mentors): MentorProfile | undefined {
+  return pool.find((m) => m.id === id);
 }
 
-export function getMentorByUsername(username: string): MentorProfile | undefined {
-  return mentors.find((m) => m.username === username);
+export function getMentorByUsername(username: string, pool: MentorProfile[] = mentors): MentorProfile | undefined {
+  return pool.find((m) => m.username === username);
 }
 
-export function getMentorsForDomain(domain: string): MentorProfile[] {
-  return mentors.filter((m) => m.domain === domain);
+export function getMentorsForDomain(domain: string, pool: MentorProfile[] = mentors): MentorProfile[] {
+  return pool.filter((m) => m.domain === domain);
 }
 
 export function getDomainBySlug(slug: string): DomainInfo | undefined {
@@ -363,11 +363,12 @@ export function getRankedMentorsForBranch(
   branchId: string,
   selectedRole: string,
   studentSkills: string[],
+  pool: MentorProfile[] = mentors
 ): MentorProfile[] {
-  const pool = mentors.filter((m) => m.branchId === branchId);
+  const branchPool = pool.filter((m) => m.branchId === branchId);
 
   // Score each mentor
-  const scored = pool.map((m) => {
+  const scored = branchPool.map((m) => {
     let score = 0;
     // Role match (exact string in expertise)
     if (m.expertise.some((e) => e.toLowerCase() === selectedRole.toLowerCase())) {

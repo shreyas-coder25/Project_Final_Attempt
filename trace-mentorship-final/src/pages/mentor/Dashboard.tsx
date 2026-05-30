@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import MentorChat from "@/src/components/MentorChat";
-import { getMentorById, type MentorProfile } from "@/src/data/mentors";
+import { type MentorProfile } from "@/src/data/mentors";
 import {
   subscribeMentorshipsForMentor,
   updateMentorshipStatus,
