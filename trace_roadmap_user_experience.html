@@ -1,0 +1,335 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+.wrap{padding:1rem 0 2rem}
+
+.header-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.topic-title{font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.meta-pill{display:flex;align-items:center;gap:5px;font-size:12px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.meta-pill i{font-size:13px}
+.prog-pct{font-size:24px;font-weight:500;color:var(--color-text-primary);white-space:nowrap}
+.prog-label{font-size:12px;color:var(--color-text-secondary);text-align:right}
+.prog-bar-bg{height:6px;background:var(--color-background-tertiary);border-radius:99px;overflow:hidden;margin-top:.5rem}
+.prog-bar-fill{height:100%;background:#378ADD;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.summary-text{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid var(--color-border-tertiary)}
+
+.tips-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem}
+.tip-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:12px;color:var(--color-text-secondary);line-height:1.5;border:0.5px solid var(--color-border-tertiary)}
+.tip-card strong{display:block;font-size:11px;font-weight:500;color:#378ADD;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+
+.phase-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);margin-bottom:.75rem;overflow:hidden}
+.phase-header{display:flex;align-items:center;gap:12px;padding:1rem 1.25rem;cursor:pointer;user-select:none;transition:background .15s}
+.phase-header:hover{background:var(--color-background-secondary)}
+.phase-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.phase-info{flex:1}
+.phase-name{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.phase-theme{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.phase-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.phase-count{font-size:12px;color:var(--color-text-secondary)}
+.phase-weeks{font-size:11px;padding:2px 8px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-tertiary)}
+.chevron{font-size:16px;color:var(--color-text-tertiary);transition:transform .25s}
+.chevron.open{transform:rotate(180deg)}
+
+.milestones-list{border-top:0.5px solid var(--color-border-tertiary)}
+.milestone-row{border-bottom:0.5px solid var(--color-border-tertiary)}
+.milestone-row:last-child{border-bottom:none}
+.milestone-summary{display:flex;align-items:center;gap:10px;padding:.875rem 1.25rem;cursor:pointer;transition:background .15s}
+.milestone-summary:hover{background:var(--color-background-secondary)}
+.check-btn{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--color-border-secondary);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;color:transparent;font-size:11px}
+.check-btn.done{background:#639922;border-color:#639922;color:#fff}
+.milestone-main{flex:1;min-width:0}
+.milestone-title{font-size:13px;font-weight:500;color:var(--color-text-primary);transition:color .2s}
+.milestone-title.done{text-decoration:line-through;color:var(--color-text-tertiary)}
+.skills-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.skill-tag{font-size:11px;padding:2px 7px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.milestone-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.est-hrs{font-size:11px;color:var(--color-text-tertiary)}
+.diff-badge{font-size:10px;padding:2px 7px;border-radius:20px}
+.diff-beginner{background:#EAF3DE;color:#3B6D11}
+.diff-intermediate{background:#FAEEDA;color:#854F0B}
+.diff-advanced{background:#FAECE7;color:#993C1D}
+.expand-icon{font-size:14px;color:var(--color-text-tertiary);transition:transform .2s}
+.expand-icon.open{transform:rotate(180deg)}
+
+.milestone-detail{background:var(--color-background-secondary);border-top:0.5px solid var(--color-border-tertiary);padding:1rem 1.25rem 1rem 3.25rem}
+.detail-desc{font-size:13px;color:var(--color-text-primary);line-height:1.6;margin-bottom:.75rem}
+.why-box{display:flex;align-items:flex-start;gap:8px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 12px;margin-bottom:.875rem}
+.why-box i{font-size:15px;color:#378ADD;flex-shrink:0;margin-top:1px}
+.why-text{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+.section-label{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.resources-list{display:flex;flex-direction:column;gap:6px;margin-bottom:.875rem}
+.resource-link{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);text-decoration:none;transition:border-color .15s}
+.resource-link:hover{border-color:var(--color-border-secondary)}
+.res-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.res-yt{background:#FAECE7;color:#993C1D}
+.res-nptel{background:#EAF3DE;color:#3B6D11}
+.res-coursera{background:#E6F1FB;color:#185FA5}
+.res-docs{background:#EEEDFE;color:#534AB7}
+.res-practice{background:#FAEEDA;color:#854F0B}
+.res-info{flex:1;min-width:0}
+.res-title{font-size:12px;font-weight:500;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-meta{font-size:11px;color:var(--color-text-tertiary);margin-top:1px}
+.primary-badge{font-size:10px;padding:1px 6px;background:#E6F1FB;color:#185FA5;border-radius:20px;flex-shrink:0}
+.practice-box{background:#FAEEDA;border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:.75rem}
+.practice-title{font-size:11px;font-weight:500;color:#854F0B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.practice-text{font-size:12px;color:#633806;line-height:1.5}
+.criteria-box{display:flex;align-items:flex-start;gap:8px}
+.criteria-box i{font-size:14px;color:#639922;flex-shrink:0;margin-top:1px}
+.criteria-text{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+</style>
+
+<h2 class="sr-only">Interactive learning roadmap for Data Structures & Algorithms — 6 month plan to crack campus placements</h2>
+
+<div class="wrap">
+
+<div class="header-card">
+  <div class="header-top">
+    <div>
+      <div class="topic-title">Data Structures & Algorithms</div>
+      <div class="meta-row">
+        <span class="meta-pill"><i class="ti ti-target"></i> Crack campus placements</span>
+        <span class="meta-pill"><i class="ti ti-calendar"></i> 6 months · 24 weeks</span>
+        <span class="meta-pill"><i class="ti ti-clock"></i> 8–10 hrs/week</span>
+        <span class="meta-pill"><i class="ti ti-user"></i> Complete beginner</span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="prog-pct" id="pct-display">0%</div>
+      <div class="prog-label" id="count-display">0 / 12 milestones</div>
+    </div>
+  </div>
+  <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill" style="width:0%"></div></div>
+  <div class="summary-text">By the end of this roadmap, you'll be able to solve medium-hard LeetCode problems, understand core CS concepts asked in FAANG/MAANG interviews, and confidently walk into any campus placement test. You'll go from zero to building your own problem-solving intuition — not just memorizing solutions.</div>
+</div>
+
+<div class="tips-row">
+  <div class="tip-card"><strong>Don't rush arrays</strong>Spend 2x more time on Arrays & Strings than you think you need. 60% of placement problems come from here.</div>
+  <div class="tip-card"><strong>NeetCode > random LeetCode</strong>Follow a curated list (NeetCode 150 or Striver's SDE Sheet) instead of solving random problems.</div>
+  <div class="tip-card"><strong>Dry run every solution</strong>Always trace through your code by hand before running it. This is what interviewers watch for.</div>
+  <div class="tip-card"><strong>Revise weekly</strong>Spend the last 30 min of every session re-solving 2 problems from the previous week. Memory fades fast.</div>
+</div>
+
+<div id="phases"></div>
+
+</div>
+
+<script>
+const phases=[
+  {num:1,title:"Foundation",theme:"Time complexity, arrays, strings, and basic problem solving",weeks:5,color:"#378ADD",bgLight:"#E6F1FB",milestones:[
+    {id:"p1m1",title:"Complexity Analysis & Big-O Notation",desc:"Understand how to measure algorithm efficiency using Big-O, Big-Ω and Big-Θ notations. Learn to analyze loops, nested loops, and recursive calls.",why:"Every single interview question starts with 'what's the time complexity?' — you can't skip this.",diff:"beginner",skills:["Big-O Notation","Space Complexity","Time Analysis"],hours:8,resources:[
+      {title:"Big-O Notation — Abdul Bari",url:"https://www.youtube.com/watch?v=0IAPZzGSbME",type:"yt",mins:62,primary:true},
+      {title:"CS50 Week 3 — Algorithms",url:"https://cs50.harvard.edu/x/2024/weeks/3/",type:"docs",mins:120,primary:false}
+    ],task:"Given 5 different code snippets, write down the time and space complexity for each. Verify your answers using online resources.",criteria:"You can look at any loop structure and state its Big-O complexity within 30 seconds."},
+    {id:"p1m2",title:"Arrays & Sliding Window",desc:"Master array traversal, in-place operations, two-pointer technique, and sliding window patterns. These appear in 40% of placement tests.",why:"Arrays are the single most tested topic in every placement exam and coding round.",diff:"beginner",skills:["Two Pointers","Sliding Window","In-place Ops"],hours:14,resources:[
+      {title:"Arrays Playlist — Striver (takeUforward)",url:"https://www.youtube.com/playlist?list=PLgUwDviBIf0rENwdL0nEH0uHMbZl4Q5f4",type:"yt",mins:240,primary:true},
+      {title:"LeetCode Array problems — Easy set",url:"https://leetcode.com/tag/array/",type:"practice",mins:300,primary:false}
+    ],task:"Solve these 5 LeetCode problems without looking at solutions: Best Time to Buy Stock, Maximum Subarray, Two Sum, Contains Duplicate, Product of Array Except Self.",criteria:"You can solve Easy-level array problems in under 20 minutes without hints."},
+    {id:"p1m3",title:"Strings & Hashing",desc:"Learn string manipulation patterns, character frequency maps, and how hash maps/sets reduce time complexity from O(n²) to O(n).",why:"Hashing is the most powerful tool for optimising brute-force solutions — it comes up in almost every problem set.",diff:"beginner",skills:["HashMap","HashSet","String Patterns"],hours:10,resources:[
+      {title:"Hashing Explained — Kunal Kushwaha",url:"https://www.youtube.com/watch?v=KEs5UyBJ39g",type:"yt",mins:90,primary:true},
+      {title:"Valid Anagram, Group Anagrams, Top K Frequent",url:"https://leetcode.com/tag/hash-table/",type:"practice",mins:180,primary:false}
+    ],task:"Re-implement a basic HashMap from scratch using an array of linked lists (separate chaining). No library functions.",criteria:"You can identify when a HashMap will optimize a brute-force O(n²) solution and implement it correctly."}
+  ]},
+  {num:2,title:"Core Structures",theme:"Linked lists, stacks, queues, and recursion basics",weeks:6,color:"#1D9E75",bgLight:"#E1F5EE",milestones:[
+    {id:"p2m1",title:"Linked Lists — All Patterns",desc:"Implement singly and doubly linked lists from scratch. Master reversal, cycle detection (Floyd's algorithm), merge, and find middle — all classic interview patterns.",why:"Linked list questions test pointer manipulation — a skill that separates students who just use libraries from those who understand memory.",diff:"beginner",skills:["Pointers","Floyd's Algorithm","List Reversal"],hours:12,resources:[
+      {title:"Linked List Full Series — Striver",url:"https://www.youtube.com/playlist?list=PLgUwDviBIf0r47RKH7a5-PcpRqaQ3uTmO",type:"yt",mins:200,primary:true},
+      {title:"Linked List Problems — NeetCode",url:"https://neetcode.io/roadmap",type:"docs",mins:240,primary:false}
+    ],task:"Without using Python/Java built-ins, implement: add node, delete node, reverse list, detect cycle, find middle — all in one clean class.",criteria:"You can implement a full linked list with all standard operations from a blank file in under 45 minutes."},
+    {id:"p2m2",title:"Stacks & Queues",desc:"Understand LIFO/FIFO data structures, implement them using arrays/linked lists, and solve monotonic stack problems which appear frequently in placements.",why:"Stack problems like 'next greater element' and 'valid parentheses' are extremely common in every company's first coding round.",diff:"intermediate",skills:["Monotonic Stack","LIFO/FIFO","Deque"],hours:10,resources:[
+      {title:"Stack & Queue — Jenny's Lectures",url:"https://www.youtube.com/playlist?list=PLdo5W4Nhv31bbKLgHvH4p4BVXuBW3l0DY",type:"yt",mins:150,primary:true},
+      {title:"Valid Parentheses, Min Stack, Daily Temperatures",url:"https://leetcode.com/tag/stack/",type:"practice",mins:180,primary:false}
+    ],task:"Solve 'Largest Rectangle in Histogram' using a monotonic stack. This is a hard problem — take your time, draw it out.",criteria:"You can solve monotonic stack problems by identifying the pattern within 5 minutes of reading the problem."},
+    {id:"p2m3",title:"Recursion & Backtracking",desc:"Build recursive thinking by solving problems top-down. Learn the call stack, base cases, and how backtracking explores all possibilities while pruning dead ends.",why:"Recursion is the foundation of trees, graphs, and dynamic programming — the three hardest topics ahead. You can't skip this.",diff:"intermediate",skills:["Recursion Tree","Base Cases","Backtracking"],hours:16,resources:[
+      {title:"Recursion Masterclass — Aditya Verma",url:"https://www.youtube.com/playlist?list=PL_z_8CaSLPWeT1ffjiImo0sYTcnLzo-wY",type:"yt",mins:300,primary:true},
+      {title:"Subsets, Permutations, N-Queens on LeetCode",url:"https://leetcode.com/tag/backtracking/",type:"practice",mins:240,primary:false}
+    ],task:"Solve all 3: Generate all subsets of an array, generate all permutations, solve N-Queens for N=4. Draw the recursion tree for each.",criteria:"You can draw the full recursion tree for any given problem before writing a single line of code."}
+  ]},
+  {num:3,title:"Trees & Graphs",theme:"Binary trees, BSTs, BFS, DFS, and graph algorithms",weeks:6,color:"#BA7517",bgLight:"#FAEEDA",milestones:[
+    {id:"p3m1",title:"Binary Trees — Traversals & Patterns",desc:"Implement all tree traversals (inorder, preorder, postorder, level-order) both recursively and iteratively. Solve classic tree problems like height, diameter, LCA.",why:"Tree problems make up 25–30% of FAANG interview questions. Strong tree intuition directly translates to graph and DP skills.",diff:"intermediate",skills:["DFS on Trees","BFS Level Order","LCA"],hours:14,resources:[
+      {title:"Binary Tree Playlist — Striver",url:"https://www.youtube.com/playlist?list=PLgUwDviBIf0q8Hkd7bK2Bpryj2xVJk8Vk",type:"yt",mins:280,primary:true},
+      {title:"Maximum Depth, Diameter, Symmetric Tree",url:"https://leetcode.com/tag/tree/",type:"practice",mins:200,primary:false}
+    ],task:"Implement level-order traversal iteratively (using a queue) AND recursively (using DFS with depth tracking). Verify they produce the same output.",criteria:"You can write any tree traversal variant from memory, and solve Easy/Medium tree problems within 25 minutes."},
+    {id:"p3m2",title:"Graphs — BFS, DFS & Cycles",desc:"Represent graphs using adjacency lists, implement BFS and DFS for connected components, cycle detection, and topological sort for DAGs.",why:"Graphs are the most common topic in product company interviews (Amazon, Flipkart, Google) and form the basis of real-world system design.",diff:"intermediate",skills:["Adjacency List","Topological Sort","Cycle Detection"],hours:16,resources:[
+      {title:"Graph Series — Striver (G-1 to G-20)",url:"https://www.youtube.com/playlist?list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn",type:"yt",mins:360,primary:true},
+      {title:"NPTEL DSA — Graph Algorithms",url:"https://nptel.ac.in/courses/106102064",type:"nptel",mins:200,primary:false}
+    ],task:"Solve 'Number of Islands', 'Course Schedule' (cycle detection in directed graph), and 'Rotten Oranges' (multi-source BFS) in one sitting without hints.",criteria:"You can implement BFS and DFS on a graph from scratch and identify which one to use given a problem statement."},
+    {id:"p3m3",title:"Shortest Path Algorithms",desc:"Learn Dijkstra's algorithm for weighted graphs, Bellman-Ford for negative weights, and Floyd-Warshall for all-pairs. Understand when each applies.",why:"Shortest path questions are a consistent feature of TCS Digital, Infosys SP, and product company screening tests.",diff:"advanced",skills:["Dijkstra","Bellman-Ford","Priority Queue"],hours:12,resources:[
+      {title:"Dijkstra's Algorithm — Abdul Bari",url:"https://www.youtube.com/watch?v=XB4MIexjvY0",type:"yt",mins:45,primary:true},
+      {title:"Network Delay Time, Cheapest Flights",url:"https://leetcode.com/tag/shortest-path/",type:"practice",mins:150,primary:false}
+    ],task:"Implement Dijkstra's from scratch using a min-heap (priority queue), not just calling library functions. Test on a custom weighted graph you draw yourself.",criteria:"You can code Dijkstra's algorithm in an interview without referring to notes and explain why a priority queue is used."}
+  ]},
+  {num:4,title:"Dynamic Programming + Final Prep",theme:"DP patterns, mock interviews, and placement-ready practice",weeks:7,color:"#7F77DD",bgLight:"#EEEDFE",milestones:[
+    {id:"p4m1",title:"DP Fundamentals — Memoization & Tabulation",desc:"Understand the overlapping subproblems and optimal substructure properties. Convert recursive solutions to top-down (memoization) and bottom-up (tabulation) DP.",why:"DP is the make-or-break topic in FAANG interviews. Companies like Google and Adobe specifically focus on DP in their final rounds.",diff:"advanced",skills:["Memoization","Tabulation","State Design"],hours:18,resources:[
+      {title:"DP Series — Striver (DP-1 to DP-20)",url:"https://www.youtube.com/playlist?list=PLgUwDviBIf0qUlt5H_kiKYaNSqJ81PMMY",type:"yt",mins:420,primary:true},
+      {title:"Aditya Verma DP Playlist",url:"https://www.youtube.com/playlist?list=PL_z_8CaSLPWekqhdCPmFohncHwz8TY2Go",type:"yt",mins:300,primary:false}
+    ],task:"Solve Fibonacci, Climbing Stairs, House Robber — first with pure recursion, then add memoization, then convert to tabulation. Write all 3 versions for each.",criteria:"You can take any recursive solution and convert it to both memoized and tabulated DP within 20 minutes."},
+    {id:"p4m2",title:"Classic DP Patterns",desc:"Master the 5 most tested DP patterns: 0/1 Knapsack, Longest Common Subsequence, Matrix Chain, Coin Change, and Longest Increasing Subsequence.",why:"These 5 patterns cover 80% of all DP questions asked in Indian placement exams and FAANG coding rounds.",diff:"advanced",skills:["Knapsack","LCS","LIS","Coin Change"],hours:20,resources:[
+      {title:"0/1 Knapsack — Aditya Verma",url:"https://www.youtube.com/watch?v=8LusJS5-AGo",type:"yt",mins:50,primary:true},
+      {title:"LeetCode DP Study Plan",url:"https://leetcode.com/study-plan/dynamic-programming/",type:"practice",mins:400,primary:false}
+    ],task:"Solve 10 LeetCode DP problems (5 Medium, 5 Hard) using only patterns you've learned. No editorial unless stuck for 45+ minutes. Log your approach for each.",criteria:"Given a DP problem, you can identify which of the 5 patterns it maps to within 5 minutes of reading."},
+    {id:"p4m3",title:"Mock Interviews & Contest Practice",desc:"Simulate real interview pressure by doing timed mock interviews, participating in weekly contests on Codeforces/LeetCode, and reviewing solutions critically.",why:"Knowing the concept is 50%. Performing under time pressure in a real interview is the other 50%. You only build this through practice.",diff:"advanced",skills:["Time Management","Contest Strategy","Code Review"],hours:20,resources:[
+      {title:"LeetCode Weekly Contests",url:"https://leetcode.com/contest/",type:"practice",mins:480,primary:true},
+      {title:"Pramp — Free Mock Interviews",url:"https://www.pramp.com/",type:"docs",mins:300,primary:false}
+    ],task:"Complete 4 full mock interviews on Pramp (2 as interviewee, 2 as interviewer). Participate in at least 3 LeetCode weekly contests. Track your rank each time.",criteria:"You can solve 2 LeetCode medium problems within 45 minutes under interview conditions without external help."}
+  ]}
+];
+
+const totalMilestones=phases.reduce((a,p)=>a+p.milestones.length,0);
+const completed=new Set();
+
+function updateProgress(){
+  const pct=Math.round((completed.size/totalMilestones)*100);
+  document.getElementById('pct-display').textContent=pct+'%';
+  document.getElementById('count-display').textContent=completed.size+' / '+totalMilestones+' milestones';
+  document.getElementById('prog-fill').style.width=pct+'%';
+}
+
+function typeIcon(type){
+  const map={yt:'ti-brand-youtube',nptel:'ti-school',coursera:'ti-certificate',docs:'ti-book',practice:'ti-code'};
+  return map[type]||'ti-link';
+}
+function typeClass(type){
+  const map={yt:'res-yt',nptel:'res-nptel',coursera:'res-coursera',docs:'res-docs',practice:'res-practice'};
+  return map[type]||'res-docs';
+}
+function typeLabel(type){
+  const map={yt:'YouTube',nptel:'NPTEL',coursera:'Coursera',docs:'Docs',practice:'Practice'};
+  return map[type]||type;
+}
+
+function buildPhases(){
+  const container=document.getElementById('phases');
+  phases.forEach(phase=>{
+    const card=document.createElement('div');
+    card.className='phase-card';
+    card.innerHTML=`
+      <div class="phase-header" onclick="togglePhase(${phase.num})">
+        <div class="phase-num" style="background:${phase.bgLight};color:${phase.color};">${phase.num}</div>
+        <div class="phase-info">
+          <div class="phase-name">${phase.title}</div>
+          <div class="phase-theme">${phase.theme}</div>
+        </div>
+        <div class="phase-right">
+          <span class="phase-count" id="phase-count-${phase.num}">0 / ${phase.milestones.length} done</span>
+          <span class="phase-weeks">${phase.weeks} weeks</span>
+          <i class="ti ti-chevron-down chevron" id="chevron-${phase.num}" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div class="milestones-list" id="phase-body-${phase.num}" style="display:none">
+        ${phase.milestones.map(m=>buildMilestone(m,phase.color,phase.bgLight)).join('')}
+      </div>`;
+    container.appendChild(card);
+  });
+  openPhase(1);
+}
+
+function buildMilestone(m,color,bgLight){
+  const diffClass='diff-'+m.diff;
+  const resources=m.resources.map(r=>`
+    <a class="resource-link" href="${r.url}" target="_blank">
+      <div class="res-icon ${typeClass(r.type)}" aria-hidden="true"><i class="ti ${typeIcon(r.type)}"></i></div>
+      <div class="res-info">
+        <div class="res-title">${r.title}</div>
+        <div class="res-meta">${typeLabel(r.type)} · ${r.mins >= 60 ? Math.floor(r.mins/60)+'h '+(r.mins%60?r.mins%60+'m':'') : r.mins+' min'}</div>
+      </div>
+      ${r.primary?'<span class="primary-badge">Main</span>':''}
+      <i class="ti ti-external-link" style="font-size:13px;color:var(--color-text-tertiary)" aria-hidden="true"></i>
+    </a>`).join('');
+
+  return `
+    <div class="milestone-row" id="row-${m.id}">
+      <div class="milestone-summary" onclick="toggleMilestone('${m.id}')">
+        <button class="check-btn" id="check-${m.id}" onclick="event.stopPropagation();toggleCheck('${m.id}')" aria-label="Mark ${m.title} as complete">
+          <i class="ti ti-check" aria-hidden="true"></i>
+        </button>
+        <div class="milestone-main">
+          <div class="milestone-title" id="title-${m.id}">${m.title}</div>
+          <div class="skills-row">${m.skills.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
+        </div>
+        <div class="milestone-right">
+          <span class="est-hrs">~${m.hours}h</span>
+          <span class="diff-badge ${diffClass}">${m.diff}</span>
+          <i class="ti ti-chevron-down expand-icon" id="expand-${m.id}" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div class="milestone-detail" id="detail-${m.id}" style="display:none">
+        <p class="detail-desc">${m.desc}</p>
+        <div class="why-box">
+          <i class="ti ti-bulb" aria-hidden="true"></i>
+          <div class="why-text"><strong>Why this matters:</strong> ${m.why}</div>
+        </div>
+        <div class="section-label">Resources</div>
+        <div class="resources-list">${resources}</div>
+        <div class="practice-box">
+          <div class="practice-title"><i class="ti ti-tools" style="font-size:12px" aria-hidden="true"></i> Practice task</div>
+          <div class="practice-text">${m.task}</div>
+        </div>
+        <div class="section-label">Done when</div>
+        <div class="criteria-box">
+          <i class="ti ti-circle-check" aria-hidden="true"></i>
+          <div class="criteria-text">${m.criteria}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+const openPhases=new Set();
+const openMilestones=new Set();
+
+function togglePhase(num){
+  if(openPhases.has(num)) closePhase(num);
+  else openPhase(num);
+}
+function openPhase(num){
+  openPhases.add(num);
+  const body=document.getElementById('phase-body-'+num);
+  const chev=document.getElementById('chevron-'+num);
+  if(body) body.style.display='block';
+  if(chev) chev.classList.add('open');
+}
+function closePhase(num){
+  openPhases.delete(num);
+  const body=document.getElementById('phase-body-'+num);
+  const chev=document.getElementById('chevron-'+num);
+  if(body) body.style.display='none';
+  if(chev) chev.classList.remove('open');
+}
+function toggleMilestone(id){
+  const detail=document.getElementById('detail-'+id);
+  const icon=document.getElementById('expand-'+id);
+  if(!detail) return;
+  const open=detail.style.display!=='none';
+  detail.style.display=open?'none':'block';
+  if(icon) icon.classList.toggle('open',!open);
+}
+function toggleCheck(id){
+  const btn=document.getElementById('check-'+id);
+  const titleEl=document.getElementById('title-'+id);
+  if(completed.has(id)){
+    completed.delete(id);
+    btn.classList.remove('done');
+    titleEl.classList.remove('done');
+  } else {
+    completed.add(id);
+    btn.classList.add('done');
+    titleEl.classList.add('done');
+  }
+  updatePhaseCount(id);
+  updateProgress();
+}
+
+function updatePhaseCount(milestoneId){
+  phases.forEach(phase=>{
+    const count=phase.milestones.filter(m=>completed.has(m.id)).length;
+    const el=document.getElementById('phase-count-'+phase.num);
+    if(el) el.textContent=count+' / '+phase.milestones.length+' done';
+  });
+}
+
+buildPhases();
+updateProgress();
+</script>

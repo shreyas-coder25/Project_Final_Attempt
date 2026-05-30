@@ -159,6 +159,7 @@ export interface WizardContext {
   studentRole?: string;
   studentSkills?: string[];
   studentGoals?: string;
+  studentGraduationYear?: string;
 }
 
 export async function generatePersonalizedRoadmap(
@@ -178,6 +179,7 @@ Student Context (use to personalize):
 - Branch: ${context.studentBranch || "Unknown"}
 - Target Role: ${context.studentRole || "Unknown"}
 - Known Skills: ${context.studentSkills?.join(", ") || "None (absolute beginner)"}
+- Graduation Year: ${context.studentGraduationYear || "Unknown"}
 
 OUTPUT RULES:
 - Return ONLY raw JSON matching the schema below. No markdown formatting, no code fences.
@@ -185,9 +187,11 @@ OUTPUT RULES:
 - Milestones per phase: 3-5. Resources per milestone: 2-4.
 - Each milestone MUST have practiceTask and completionCriteria.
 - tips: 4 practical, topic-specific tips.
-- YouTube: prefer Apna College, CodeWithHarry, Kunal Kushwaha, Striver, Jenny's Lectures.
-- Free courses: prefer NPTEL, Coursera free audit, freeCodeCamp, CS50.
-- First phase: absolute zero. Last phase: real-world project.
+- RESOURCES MUST BE EXTREMELY HIGH QUALITY AND REAL. Do not generate fake URLs.
+- For DSA/Coding: prefer Striver, NeetCode, Aditya Verma, Kunal Kushwaha, CS50.
+- For Web Dev/Tech: prefer freeCodeCamp, The Odin Project, Traversy Media, Fireship.
+- For Core Engineering/Math: prefer NPTEL, Coursera, MIT OpenCourseWare.
+- Provide detailed, non-generic descriptions that sound like an expert mentor talking.
 
 Expected JSON format:
 {
@@ -257,44 +261,88 @@ Expected JSON format:
     console.warn("Gemini API failed, returning mock roadmap. Error:", error);
     return {
       meta: {
-        topic: context.topic,
-        goal: context.studentGoals || "Upskilling",
-        timeline: context.timeline + " months",
-        totalWeeks: Number(context.timeline) * 4,
-        hoursPerWeek: context.hoursPerWeek,
-        level: context.currentLevel
+        topic: "Data Structures & Algorithms",
+        goal: "Crack campus placements",
+        timeline: "6 months",
+        totalWeeks: 24,
+        hoursPerWeek: 10,
+        level: "Complete beginner"
       },
-      summary: "This is a fallback generated roadmap because the Gemini API key was invalid. To get real AI generation, please configure a valid VITE_GEMINI_API_KEY.",
-      tips: ["Practice coding daily", "Read documentation"],
+      summary: "This is a fallback generated roadmap because the Gemini API key was invalid. By the end of this roadmap, you'll be able to solve medium-hard LeetCode problems, understand core CS concepts asked in FAANG/MAANG interviews, and confidently walk into any campus placement test.",
+      tips: [
+        "Don't rush arrays: Spend 2x more time on Arrays & Strings than you think you need.",
+        "NeetCode > random LeetCode: Follow a curated list instead of solving random problems.",
+        "Dry run every solution: Always trace through your code by hand before running it.",
+        "Revise weekly: Spend the last 30 min of every session re-solving 2 problems from the previous week."
+      ],
       phases: [
         {
           phaseNumber: 1,
           title: "Foundation",
-          theme: "Master the Basics",
-          durationWeeks: 4,
-          weeklyGoal: "Complete the introductory concepts.",
+          theme: "Time complexity, arrays, strings, and basic problem solving",
+          durationWeeks: 5,
+          weeklyGoal: "Master Big-O and complete basic Array/String patterns.",
           milestones: [
             {
-              id: "mock-1",
-              title: "Learn the Fundamentals",
-              description: "Build a strong foundation in the core principles of your domain.",
-              why: "Essential before moving to advanced topics.",
+              id: "p1m1",
+              title: "Complexity Analysis & Big-O Notation",
+              description: "Understand how to measure algorithm efficiency using Big-O, Big-Ω and Big-Θ notations. Learn to analyze loops, nested loops, and recursive calls.",
+              why: "Every single interview question starts with 'what's the time complexity?' — you can't skip this.",
               difficulty: "beginner",
-              skills: ["Basics"],
-              estimatedHours: 15,
-              practiceTask: "Create a simple hello world app.",
-              completionCriteria: "Can explain the basic concepts without looking at notes.",
+              skills: ["Big-O Notation", "Space Complexity", "Time Analysis"],
+              estimatedHours: 8,
+              practiceTask: "Given 5 different code snippets, write down the time and space complexity for each. Verify your answers using online resources.",
+              completionCriteria: "You can look at any loop structure and state its Big-O complexity within 30 seconds.",
               status: "active",
               resources: [
-                { title: "Crash Course", url: "https://youtube.com", type: "youtube", estimatedMinutes: 60, isPrimary: true }
+                { title: "Big-O Notation — Abdul Bari", url: "https://www.youtube.com/watch?v=0IAPZzGSbME", type: "youtube", estimatedMinutes: 62, isPrimary: true },
+                { title: "CS50 Week 3 — Algorithms", url: "https://cs50.harvard.edu/x/2024/weeks/3/", type: "docs", estimatedMinutes: 120, isPrimary: false }
+              ]
+            },
+            {
+              id: "p1m2",
+              title: "Arrays & Sliding Window",
+              description: "Master array traversal, in-place operations, two-pointer technique, and sliding window patterns. These appear in 40% of placement tests.",
+              why: "Arrays are the single most tested topic in every placement exam and coding round.",
+              difficulty: "beginner",
+              skills: ["Two Pointers", "Sliding Window", "In-place Ops"],
+              estimatedHours: 14,
+              practiceTask: "Solve these 5 LeetCode problems without looking at solutions: Best Time to Buy Stock, Maximum Subarray, Two Sum, Contains Duplicate, Product of Array Except Self.",
+              completionCriteria: "You can solve Easy-level array problems in under 20 minutes without hints.",
+              status: "upcoming",
+              resources: [
+                { title: "Arrays Playlist — Striver (takeUforward)", url: "https://www.youtube.com/playlist?list=PLgUwDviBIf0rENwdL0nEH0uHMbZl4Q5f4", type: "youtube", estimatedMinutes: 240, isPrimary: true },
+                { title: "LeetCode Array problems — Easy set", url: "https://leetcode.com/tag/array/", type: "practice", estimatedMinutes: 300, isPrimary: false }
+              ]
+            }
+          ]
+        },
+        {
+          phaseNumber: 2,
+          title: "Core Structures",
+          theme: "Linked lists, stacks, queues, and recursion basics",
+          durationWeeks: 6,
+          weeklyGoal: "Implement fundamental data structures from scratch.",
+          milestones: [
+            {
+              id: "p2m1",
+              title: "Linked Lists — All Patterns",
+              description: "Implement singly and doubly linked lists from scratch. Master reversal, cycle detection (Floyd's algorithm), merge, and find middle.",
+              why: "Linked list questions test pointer manipulation — a skill that separates students who just use libraries from those who understand memory.",
+              difficulty: "beginner",
+              skills: ["Pointers", "Floyd's Algorithm", "List Reversal"],
+              estimatedHours: 12,
+              practiceTask: "Without using built-ins, implement: add node, delete node, reverse list, detect cycle, find middle — all in one clean class.",
+              completionCriteria: "You can implement a full linked list with all standard operations from a blank file in under 45 minutes.",
+              status: "upcoming",
+              resources: [
+                { title: "Linked List Full Series — Striver", url: "https://www.youtube.com/playlist?list=PLgUwDviBIf0r47RKH7a5-PcpRqaQ3uTmO", type: "youtube", estimatedMinutes: 200, isPrimary: true }
               ]
             }
           ]
         }
       ],
-      flatMilestones: [
-        { id: "mock-1", title: "Learn the Fundamentals", phaseNumber: 1, estimatedHours: 15 }
-      ]
+      flatMilestones: []
     };
   }
 }

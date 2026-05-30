@@ -24,6 +24,7 @@ export interface StudentProfile {
   uid?: string;
   name: string;
   year: string;
+  graduationYear?: string;
   branch: string;
   domain: string;
   goals: string;

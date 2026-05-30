@@ -69,7 +69,8 @@ export default function RoadmapPage() {
         studentBranch: studentProfile?.branch,
         studentRole: studentProfile?.domain,
         studentSkills: studentProfile?.skills,
-        studentGoals: studentProfile?.goals
+        studentGoals: studentProfile?.goals,
+        studentGraduationYear: (studentProfile as any)?.graduationYear
       });
       await saveGeneratedRoadmap(userId, generated);
       setRoadmapData(generated);

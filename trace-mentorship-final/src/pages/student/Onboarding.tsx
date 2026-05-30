@@ -38,6 +38,7 @@ export default function StudentOnboarding() {
     name: "",
     branchId: "",
     year: "",
+    graduationYear: "",
     role: "",
     skills: [] as string[],
     goals: [] as string[],
@@ -158,11 +159,22 @@ export default function StudentOnboarding() {
                     onChange={(e) => updateData({ year: e.target.value })}
                     className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 bg-white transition-shadow"
                   >
-                    <option value="" disabled>
-                      Select Year
-                    </option>
+                    <option value="" disabled>Select Year</option>
                     {years.map((y) => (
                       <option key={y.value} value={y.value}>{y.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                  <label className="text-sm font-medium text-neutral-700">Graduation Year</label>
+                  <select
+                    value={data.graduationYear}
+                    onChange={(e) => updateData({ graduationYear: e.target.value })}
+                    className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 bg-white transition-shadow"
+                  >
+                    <option value="" disabled>Select Grad Year</option>
+                    {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
+                      <option key={y} value={y.toString()}>{y}</option>
                     ))}
                   </select>
                 </div>
@@ -198,7 +210,7 @@ export default function StudentOnboarding() {
             </div>
             <Button
               onClick={handleNext}
-              disabled={!data.name.trim() || !data.year || !data.branchId}
+              disabled={!data.name.trim() || !data.year || !data.graduationYear || !data.branchId}
               className="w-full mt-6"
             >
               Continue
