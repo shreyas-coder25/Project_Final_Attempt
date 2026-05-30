@@ -190,7 +190,49 @@ export function subscribeAllMentorProfiles(
   return onSnapshot(
     q,
     (snap) => {
-      const data = snap.docs.map((doc) => doc.data() as MentorProfile);
+      const data = snap.docs.map((document) => {
+        const raw = document.data();
+
+        // Normalize — guarantee all array/object fields exist so components never crash
+        const profile: MentorProfile = {
+          id: raw.id || document.id,
+          username: raw.username || raw.id || document.id,
+          name: raw.name || "Unknown Mentor",
+          title: raw.title || "",
+          domain: raw.domain || "",
+          branchId: raw.branchId || "",
+          avatar: raw.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${document.id}`,
+          expertise: Array.isArray(raw.expertise) ? raw.expertise : [],
+          responseTime: raw.responseTime || "Usually responds within 24 hours",
+          bio: raw.bio || "",
+          rating: raw.rating ?? 5.0,
+          availability: raw.availability || "available",
+          stats: raw.stats || { mentees: 0, totalMentored: 0 },
+        };
+
+        // Runtime migration for existing mentors without branchId
+        if (!profile.branchId && profile.domain) {
+          let branchId = "cs-it"; // default
+          const domainLower = profile.domain.toLowerCase();
+
+          if (domainLower.includes("core engineering") || domainLower.includes("mechanical") || domainLower.includes("civil")) {
+            branchId = "core-eng";
+          } else if (domainLower.includes("design") || domainLower.includes("product")) {
+            branchId = "design";
+          } else if (domainLower.includes("business") || domainLower.includes("management") || domainLower.includes("finance") || domainLower.includes("marketing")) {
+            branchId = "business";
+          }
+
+          profile.branchId = branchId;
+
+          // Silently trigger a background update to permanently migrate the document
+          setDoc(document.ref, { branchId }, { merge: true }).catch(err =>
+            console.error("Migration failed for profile:", profile.id, err)
+          );
+        }
+
+        return profile;
+      });
       onUpdate(data);
     },
     onError

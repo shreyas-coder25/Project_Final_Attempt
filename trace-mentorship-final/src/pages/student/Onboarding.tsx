@@ -593,11 +593,11 @@ export default function StudentOnboarding() {
                             <Clock className="w-3 h-3" />{mentor.responseTime}
                           </span>
                           <span className={`flex items-center gap-1 text-xs ${selectedMentorId === mentor.id ? "text-neutral-300" : "text-neutral-500"}`}>
-                            <Users className="w-3 h-3" />{mentor.stats.totalMentored} mentored
+                            <Users className="w-3 h-3" />{mentor.stats?.totalMentored ?? 0} mentored
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {mentor.expertise.slice(0, 4).map((skill) => (
+                          {(mentor.expertise || []).slice(0, 4).map((skill) => (
                             <span
                               key={skill}
                               className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${

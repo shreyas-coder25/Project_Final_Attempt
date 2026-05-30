@@ -370,20 +370,25 @@ export function getRankedMentorsForBranch(
   // Score each mentor
   const scored = branchPool.map((m) => {
     let score = 0;
+    const expertise = m.expertise || [];
+    const roleStr = selectedRole || "";
+    
     // Role match (exact string in expertise)
-    if (m.expertise.some((e) => e.toLowerCase() === selectedRole.toLowerCase())) {
+    if (roleStr && expertise.some((e) => e.toLowerCase() === roleStr.toLowerCase())) {
       score += 10;
     }
     // Partial role word match
-    const roleWords = selectedRole.toLowerCase().split(/[\s/&]+/);
-    roleWords.forEach((word) => {
-      if (word.length > 3 && m.expertise.some((e) => e.toLowerCase().includes(word))) {
-        score += 2;
-      }
-    });
+    if (roleStr) {
+      const roleWords = roleStr.toLowerCase().split(/[\s/&]+/);
+      roleWords.forEach((word) => {
+        if (word.length > 3 && expertise.some((e) => e.toLowerCase().includes(word))) {
+          score += 3;
+        }
+      });
+    }
     // Skill overlap
     studentSkills.forEach((skill) => {
-      if (m.expertise.some((e) => e.toLowerCase().includes(skill.toLowerCase()))) {
+      if (expertise.some((e) => e.toLowerCase().includes(skill.toLowerCase()))) {
         score += 1;
       }
     });

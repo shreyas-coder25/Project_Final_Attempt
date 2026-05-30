@@ -130,10 +130,10 @@ export default function FindMentors() {
                         <p className="text-sm text-neutral-600 mb-2">{mentor.title}</p>
                         <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
                           <span className="flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" /> {mentor.rating}
+                            <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" /> {mentor.rating ?? "N/A"}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> {mentor.responseTime}
+                            <Clock className="w-3.5 h-3.5" /> {mentor.responseTime || "Responds within 24 hrs"}
                           </span>
                         </div>
                       </div>
@@ -144,14 +144,14 @@ export default function FindMentors() {
                     </p>
 
                     <div className="flex flex-wrap gap-1.5 mb-6">
-                      {mentor.expertise.slice(0, 4).map((skill) => (
+                      {(mentor.expertise || []).slice(0, 4).map((skill) => (
                         <span key={skill} className="px-2 py-1 bg-neutral-100 rounded text-[10px] font-semibold text-neutral-600 uppercase tracking-wider">
                           {skill}
                         </span>
                       ))}
-                      {mentor.expertise.length > 4 && (
+                      {(mentor.expertise || []).length > 4 && (
                         <span className="px-2 py-1 bg-neutral-50 rounded text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
-                          +{mentor.expertise.length - 4} more
+                          +{(mentor.expertise || []).length - 4} more
                         </span>
                       )}
                     </div>

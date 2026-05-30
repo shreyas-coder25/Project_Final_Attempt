@@ -58,8 +58,9 @@ export default function StudentLogin() {
     setError("");
     setIsLoading(true);
     try {
-      const user = await signInWithGoogle();
-      processLogin(user);
+      await signInWithGoogle();
+      // The page will redirect to Google for authentication.
+      // When it redirects back, the useEffect onAuthStateChanged listener will catch it.
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to sign in with Google.");
