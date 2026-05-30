@@ -102,6 +102,8 @@ export interface ChatMessage {
   sender: "student" | "mentor";
   text: string;
   timestamp: number;
+  editedAt?: number;
+  isDeleted?: boolean;
 }
 
 export function getStudentId(): string {
@@ -496,6 +498,30 @@ export async function addChatMessage(
     sender,
     text,
     timestamp: Date.now(),
+  });
+}
+
+export async function editChatMessage(
+  mentorshipId: string,
+  messageId: string,
+  newText: string
+): Promise<void> {
+  const { db } = requireFirebase();
+  await updateDoc(doc(db, "mentorships", mentorshipId, "messages", messageId), {
+    text: newText,
+    editedAt: Date.now(),
+  });
+}
+
+export async function deleteChatMessage(
+  mentorshipId: string,
+  messageId: string
+): Promise<void> {
+  const { db } = requireFirebase();
+  await updateDoc(doc(db, "mentorships", mentorshipId, "messages", messageId), {
+    isDeleted: true,
+    text: "This message was deleted",
+    editedAt: Date.now(),
   });
 }
 

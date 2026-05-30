@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, MessageSquare, Edit2, Trash2, X } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { 
   subscribeStudentProfile, 
   subscribeAllMentorshipsForStudent, 
   subscribeChatMessages,
   addChatMessage,
+  editChatMessage,
+  deleteChatMessage,
   type MentorshipRecord,
   type ChatMessage 
 } from "@/src/lib/store";
@@ -40,6 +42,7 @@ export default function StudentChat() {
   const [selectedMentorshipId, setSelectedMentorshipId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const allMentorsPool = useAllMentors();
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -106,8 +109,25 @@ export default function StudentChat() {
 
   const handleSend = () => {
     if (!input.trim() || !selectedMentorship) return;
-    addChatMessage(selectedMentorship.id, "student", input.trim());
+    
+    if (editingMessageId) {
+      editChatMessage(selectedMentorship.id, editingMessageId, input.trim());
+      setEditingMessageId(null);
+    } else {
+      addChatMessage(selectedMentorship.id, "student", input.trim());
+    }
     setInput("");
+  };
+
+  const handleEditClick = (msg: ChatMessage) => {
+    if (msg.isDeleted) return;
+    setEditingMessageId(msg.id);
+    setInput(msg.text);
+  };
+
+  const handleDeleteClick = (msgId: string) => {
+    if (!selectedMentorship || !confirm("Are you sure you want to delete this message?")) return;
+    deleteChatMessage(selectedMentorship.id, msgId);
   };
 
   return (
@@ -187,12 +207,6 @@ export default function StudentChat() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button className="p-2 hover:bg-neutral-100 rounded-full transition-colors text-neutral-500">
-                  <Phone className="w-4 h-4" />
-                </button>
-                <button className="p-2 hover:bg-neutral-100 rounded-full transition-colors text-neutral-500">
-                  <Video className="w-4 h-4" />
-                </button>
                 <button className="p-2 hover:bg-neutral-100 rounded-full transition-colors text-neutral-500 hidden sm:block">
                   <MoreVertical className="w-4 h-4" />
                 </button>
@@ -229,17 +243,28 @@ export default function StudentChat() {
                           </span>
                         </div>
                       )}
-                      <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
+                      <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2 group relative`}>
+                        {isMine && !msg.isDeleted && (
+                          <div className="hidden group-hover:flex items-center gap-1 mr-2 opacity-60 hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleEditClick(msg)} className="p-1.5 hover:bg-neutral-200 rounded-full" title="Edit">
+                              <Edit2 className="w-3.5 h-3.5 text-neutral-600" />
+                            </button>
+                            <button onClick={() => handleDeleteClick(msg.id)} className="p-1.5 hover:bg-red-100 rounded-full" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                            </button>
+                          </div>
+                        )}
                         <div
-                          className={`max-w-[85%] sm:max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                          className={`max-w-[85%] sm:max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-sm transition-all ${
                             isMine
-                              ? "bg-neutral-900 text-white rounded-2xl rounded-tr-sm"
-                              : "bg-white text-neutral-800 border border-neutral-100 rounded-2xl rounded-tl-sm"
-                          }`}
+                              ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl rounded-tr-sm"
+                              : "bg-white text-neutral-800 border border-neutral-100 rounded-2xl rounded-tl-sm shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]"
+                          } ${msg.isDeleted ? "italic opacity-70" : ""}`}
                         >
-                          {msg.text}
-                          <div className={`text-[10px] mt-1 text-right opacity-60`}>
-                            {formatTime(msg.timestamp)}
+                          {msg.isDeleted ? "🚫 This message was deleted" : msg.text}
+                          <div className={`text-[10px] mt-1 text-right opacity-60 flex justify-end gap-1 items-center`}>
+                            {msg.editedAt && <span>(edited)</span>}
+                            <span>{formatTime(msg.timestamp)}</span>
                           </div>
                         </div>
                       </div>
@@ -252,12 +277,26 @@ export default function StudentChat() {
 
             {/* Input Form */}
             <div className="p-4 bg-white border-t border-neutral-200">
+              {editingMessageId && (
+                <div className="flex items-center justify-between bg-indigo-50 px-4 py-2 rounded-t-xl border border-indigo-100 border-b-0 max-w-4xl mx-auto -mb-2 relative z-0">
+                  <div className="flex items-center gap-2 text-sm text-indigo-700">
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span className="font-medium">Editing message</span>
+                  </div>
+                  <button 
+                    onClick={() => { setEditingMessageId(null); setInput(""); }} 
+                    className="p-1 hover:bg-indigo-100 rounded-full text-indigo-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleSend();
                 }}
-                className="flex items-center gap-3 max-w-4xl mx-auto"
+                className={`flex items-center gap-3 max-w-4xl mx-auto relative z-10 ${editingMessageId ? "mt-2" : ""}`}
               >
                 <input
                   type="text"
